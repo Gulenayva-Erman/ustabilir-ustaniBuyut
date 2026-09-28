@@ -1,0 +1,2886 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Ustanı Büyüt</title>
+<style>
+  :root {
+    --orange: #f37021;
+    --orange-dark: #d65a10;
+    --bg: #fff7f0;
+    --card: #ffffff;
+    --text: #2b2b2b;
+    --muted: #7a7a7a;
+    --green: #1f9d55;
+    --disabled: #cfcfcf;
+    --gold: #f5b700;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 16px;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    touch-action: manipulation;
+  }
+  button { font: inherit; color: inherit; }
+  .game { width: 100%; max-width: 480px; display: flex; flex-direction: column; gap: 14px; }
+
+  header {
+    background: var(--orange);
+    color: #fff;
+    border-radius: 16px;
+    padding: 14px 16px;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(243, 112, 33, .3);
+  }
+  header h1 { font-size: 15px; font-weight: 600; opacity: .9; }
+  .money { font-size: 36px; font-weight: 800; margin: 2px 0 4px; word-break: break-word; }
+  .rates { display: flex; justify-content: center; gap: 16px; font-size: 14px; opacity: .95; flex-wrap: wrap; }
+  .boosts { margin-top: 6px; font-size: 13px; font-weight: 700; min-height: 0; }
+  .boosts span { display: inline-block; background: rgba(255,255,255,.25); padding: 2px 8px; border-radius: 8px; margin: 2px; }
+
+  .progress-wrap { background: var(--card); border-radius: 16px; padding: 12px 16px; }
+  .progress-label { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); margin-bottom: 6px; gap: 8px; }
+  .progress-bar { height: 12px; background: #f0e3d9; border-radius: 6px; overflow: hidden; }
+  .progress-fill { height: 100%; width: 0; background: var(--orange); transition: width .2s; }
+  .rank { margin-top: 8px; font-size: 14px; font-weight: 700; text-align: center; }
+
+  .workshop { background: var(--card); border-radius: 16px; overflow: hidden; }
+  #shop { display: block; width: 100%; height: 300px; background: linear-gradient(#fdf1e6, #fff7f0); cursor: pointer; touch-action: pan-y; }
+  .shop-nav { display: flex; align-items: center; gap: 6px; padding: 8px 10px; border-top: 1px solid #f0e3d9; }
+  .nav-btn {
+    border: none; background: #f0e3d9; border-radius: 8px;
+    min-width: 34px; height: 30px; font-weight: 800; cursor: pointer;
+  }
+  .nav-btn:disabled { opacity: .35; cursor: default; }
+  .nav-btn.active { background: var(--orange); color: #fff; }
+  .nav-all { padding: 0 10px; font-size: 12px; }
+  .nav-label { flex: 1; text-align: center; font-size: 13px; font-weight: 700; }
+  .shop-bar {
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
+    padding: 10px 12px; font-size: 13px; font-weight: 600;
+    border-top: 1px solid #f0e3d9;
+  }
+  .shop-bar.full { background: #fff3e0; color: #c62828; }
+  .btn.small { font-size: 13px; padding: 8px 12px; white-space: nowrap; }
+
+  .click-area { position: relative; display: flex; justify-content: center; padding: 12px 0; min-height: 200px; }
+  #workBtn {
+    width: 170px; height: 170px;
+    border-radius: 50%;
+    border: none;
+    background: radial-gradient(circle at 30% 30%, #ff9a52, var(--orange) 60%, var(--orange-dark));
+    color: #fff;
+    font-size: 22px;
+    font-weight: 800;
+    line-height: 1.3;
+    cursor: pointer;
+    align-self: center;
+    box-shadow: 0 8px 0 var(--orange-dark), 0 12px 24px rgba(0,0,0,.2);
+    transition: transform .06s, box-shadow .06s;
+  }
+  #workBtn:active, #workBtn.auto-press { transform: translateY(6px); box-shadow: 0 2px 0 var(--orange-dark), 0 4px 10px rgba(0,0,0,.2); }
+
+  /* Automatic hammers striking the button */
+  .btn-wrap { position: relative; align-self: center; }
+  .hammers { position: absolute; inset: 0; pointer-events: none; }
+  .hammer {
+    position: absolute;
+    font-size: 36px;
+    line-height: 1;
+    rotate: -35deg;
+    transform-origin: 80% 80%;
+  }
+  .hammer:nth-child(1) { right: -34px; top: 18px; scale: -1 1; }   /* mirrored so it swings toward the button */
+  .hammer:nth-child(2) { left: -34px; top: 18px; }
+  .hammer:nth-child(3) { left: 50%; top: -30px; margin-left: -18px; }
+  .hammer.hit { animation: hammerHit .16s ease-in; }
+  @keyframes hammerHit {
+    0%   { rotate: -35deg; }
+    60%  { rotate: 25deg; }
+    100% { rotate: -35deg; }
+  }
+
+  .float {
+    position: absolute;
+    font-weight: 800;
+    font-size: 20px;
+    color: var(--green);
+    pointer-events: none;
+    white-space: nowrap;
+    animation: floatUp .8s ease-out forwards;
+  }
+  @keyframes floatUp {
+    from { opacity: 1; transform: translate(-50%, 0); }
+    to   { opacity: 0; transform: translate(-50%, -80px); }
+  }
+
+  #eventBtn {
+    position: absolute;
+    display: none;
+    border: 3px solid #fff;
+    background: #e53935;
+    color: #fff;
+    font-weight: 800;
+    font-size: 13px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+    z-index: 2;
+    box-shadow: 0 4px 12px rgba(0,0,0,.3);
+    animation: pulse .8s ease-in-out infinite alternate;
+  }
+  #eventBtn.show { display: block; }
+  @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.12); } }
+
+  .tabs { display: flex; gap: 6px; }
+  .tab {
+    flex: 1;
+    border: none;
+    background: #f0e3d9;
+    padding: 10px 4px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    position: relative;
+  }
+  .tab.active { background: var(--orange); color: #fff; }
+  .tab .dot {
+    position: absolute; top: 4px; right: 6px;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--green); display: none;
+  }
+  .tab.has-affordable .dot { display: block; }
+  .tab.active .dot { background: #fff; }
+
+  .panel { background: var(--card); border-radius: 16px; padding: 14px; display: none; }
+  .panel.active { display: block; }
+  .panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 8px; }
+  .panel-head h2 { font-size: 16px; }
+  .qty { display: flex; gap: 4px; }
+  .qty button {
+    border: 2px solid var(--orange); background: #fff; color: var(--orange);
+    border-radius: 8px; padding: 2px 8px; font-size: 13px; font-weight: 700; cursor: pointer;
+  }
+  .qty button.active { background: var(--orange); color: #fff; }
+
+  .item {
+    width: 100%;
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    border: 2px solid var(--orange);
+    border-radius: 12px;
+    background: #fff;
+    text-align: left;
+    cursor: pointer;
+  }
+  .item:last-child { margin-bottom: 0; }
+  .item .name { font-weight: 700; font-size: 15px; }
+  .item .desc { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .item .cost {
+    white-space: nowrap;
+    background: var(--orange); color: #fff;
+    font-weight: 700; font-size: 13px;
+    padding: 6px 10px; border-radius: 8px;
+  }
+  .item:disabled { cursor: not-allowed; border-color: var(--disabled); }
+  .item:disabled .cost { background: var(--disabled); }
+  .item:disabled .name, .item:disabled .desc { opacity: .6; }
+  .item.owned { border-color: var(--green); }
+  .item.owned .cost { background: var(--green); }
+  .item.owned .name, .item.owned .desc { opacity: 1; }
+  .item.locked .name { letter-spacing: 2px; }
+
+  .subtabs { display: flex; gap: 4px; margin-bottom: 12px; }
+  .subtab {
+    flex: 1; position: relative;
+    border: 2px solid var(--orange); background: #fff; color: var(--orange);
+    border-radius: 10px; padding: 6px 4px;
+    font-size: 12px; font-weight: 700; cursor: pointer;
+  }
+  .subtab.active { background: var(--orange); color: #fff; }
+  .subtab .dot {
+    position: absolute; top: 3px; right: 4px;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--green); display: none;
+  }
+  .subtab.has-affordable .dot { display: block; }
+  .subtab.active .dot { background: #fff; }
+
+  .ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+  .ach { border: 2px solid var(--disabled); border-radius: 12px; padding: 8px; font-size: 12px; color: var(--muted); }
+  .ach .t { font-weight: 700; font-size: 13px; margin-bottom: 2px; }
+  .ach.done { border-color: var(--gold); background: #fffbea; color: var(--text); }
+  .ach-summary { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+
+  .prestige { border: 2px dashed var(--gold); border-radius: 12px; padding: 12px; margin-bottom: 14px; font-size: 14px; line-height: 1.5; }
+  .prestige .big { font-size: 20px; font-weight: 800; }
+  .btn {
+    border: none; background: var(--orange); color: #fff;
+    font-size: 15px; font-weight: 700;
+    padding: 10px 18px; border-radius: 12px; cursor: pointer;
+  }
+  .btn:disabled { background: var(--disabled); cursor: not-allowed; }
+  .btn.secondary { background: #eee; color: var(--text); }
+  .btn.danger { background: #fff; color: #c62828; border: 2px solid #c62828; }
+  .prestige .btn { margin-top: 10px; width: 100%; }
+  .stats { width: 100%; font-size: 14px; border-collapse: collapse; margin-bottom: 14px; }
+  .stats td { padding: 6px 0; border-bottom: 1px solid #f0e3d9; }
+  .stats td:last-child { text-align: right; font-weight: 700; }
+
+  .toasts {
+    position: fixed; top: 12px; left: 50%; transform: translateX(-50%);
+    display: flex; flex-direction: column; gap: 6px;
+    width: calc(100% - 32px); max-width: 440px;
+    z-index: 20; pointer-events: none;
+  }
+  .toast {
+    background: #2b2b2b; color: #fff;
+    padding: 10px 14px; border-radius: 12px;
+    font-size: 14px; font-weight: 600;
+    box-shadow: 0 4px 12px rgba(0,0,0,.25);
+    animation: toastIn .25s ease-out;
+  }
+  @keyframes toastIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
+
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.6);
+    display: none; align-items: center; justify-content: center;
+    padding: 16px; z-index: 10;
+  }
+  .overlay.show { display: flex; }
+  .modal {
+    background: #fff;
+    border-radius: 20px;
+    padding: 26px 20px;
+    max-width: 400px;
+    width: 100%;
+    text-align: center;
+    animation: pop .35s ease-out;
+  }
+  @keyframes pop { from { transform: scale(.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .modal .icon { font-size: 36px; margin-bottom: 10px; }
+  .modal h3 { font-size: 20px; margin-bottom: 8px; }
+  .modal p { font-size: 16px; line-height: 1.5; margin-bottom: 20px; }
+  .modal .actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+
+  /* Star career */
+  .career-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .stars { font-size: 24px; letter-spacing: 2px; color: var(--gold); }
+  .career-rank { font-size: 12px; color: var(--muted); font-weight: 600; text-align: right; }
+  .career-title { font-size: 14px; font-weight: 700; margin: 6px 0 8px; }
+  .goals { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+  .goal { font-size: 13px; display: grid; grid-template-columns: 20px 1fr auto; gap: 6px; align-items: center; }
+  .goal .val { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .goal.done { color: var(--green); }
+  .goal .mini { grid-column: 2 / 4; height: 4px; background: #f0e3d9; border-radius: 2px; overflow: hidden; }
+  .goal .mini div { height: 100%; background: var(--orange); }
+  .goal.done .mini div { background: var(--green); }
+
+  /* Customer job orders */
+  .job-card { background: var(--card); border-radius: 16px; padding: 12px 14px; border: 2px solid transparent; }
+  .job-card.offer { border-color: var(--orange); animation: toastIn .3s ease-out; }
+  .job-card.active { border-color: var(--green); }
+  .job-head { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); font-weight: 700; margin-bottom: 4px; }
+  .job-title { font-size: 15px; font-weight: 800; }
+  .job-desc { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .job-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .job-actions .btn { flex: 1; }
+
+  /* Mini-game overlay */
+  .overlay.mg { z-index: 15; }
+  .mg-box {
+    background: #fff; border-radius: 20px; width: 100%; max-width: 440px;
+    max-height: calc(100vh - 32px); overflow: auto; padding: 16px;
+    animation: pop .3s ease-out;
+  }
+  .mg-title { font-size: 17px; font-weight: 800; }
+  .mg-sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .mg-timer { position: relative; height: 20px; background: #f0e3d9; border-radius: 10px; overflow: hidden; margin-top: 10px; }
+  .mg-timer .fill { height: 100%; background: var(--orange); }
+  .mg-timer span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; }
+  #mgStage { margin-top: 14px; }
+  .mg-intro, .mg-result { text-align: center; }
+  .mg-icon { font-size: 18px; }
+  .mg-intro p { margin: 10px 0; line-height: 1.5; }
+  .mg-help { color: var(--green); font-weight: 700; }
+  .btn.mg-big { width: 100%; font-size: 18px; padding: 14px; margin-top: 12px; touch-action: manipulation; }
+  .mg-feedback { text-align: center; font-weight: 800; min-height: 22px; margin-top: 8px; }
+  .mg-feedback.ok { color: var(--green); }
+  .mg-feedback.mid { color: #e0a100; }
+  .mg-feedback.bad { color: #c62828; }
+  .mg-stars { font-size: 40px; color: var(--gold); letter-spacing: 4px; }
+  .mg-review { font-style: italic; }
+  .mg-howto { font-size: 14px; color: var(--muted); }
+
+  /* Customer avatars */
+  .job-main { display: flex; gap: 10px; align-items: center; }
+  .avatar { width: 56px; height: 56px; flex-shrink: 0; }
+  .avatar svg { width: 100%; height: 100%; display: block; overflow: visible; }
+  .avatar.lg { width: 104px; height: 104px; margin: 0 auto; }
+  .avatar-empty { width: 100%; height: 100%; border-radius: 50%; background: #f0e3d9; display: flex; align-items: center; justify-content: center; font-size: 26px; }
+  .avatar .eyes { animation: blink 4.5s infinite; transform-origin: 50px 48px; }
+  @keyframes blink { 0%, 94%, 100% { transform: scaleY(1); } 97% { transform: scaleY(.1); } }
+  .mood-curious .face { animation: tilt 2.4s ease-in-out infinite alternate; transform-origin: 50px 72px; }
+  @keyframes tilt { from { transform: rotate(-7deg); } to { transform: rotate(5deg); } }
+  .mood-curious .q { animation: qbob 1s ease-in-out infinite alternate; transform-origin: 82px 20px; }
+  @keyframes qbob { from { transform: translateY(0) rotate(-10deg); } to { transform: translateY(-4px) rotate(10deg); } }
+  .mood-ecstatic svg, .mood-happy svg { animation: hop .5s ease-out 3; }
+  @keyframes hop { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+  .mood-angry svg { animation: shake .35s 3; }
+  .mood-sad .face { transform: translateY(2px); }
+  .mood-sad .tear { animation: tear 1.6s ease-in infinite; }
+  @keyframes tear { from { transform: translateY(0); opacity: 1; } to { transform: translateY(14px); opacity: 0; } }
+  .speech {
+    position: relative; background: #fff8e1; border-radius: 14px;
+    padding: 10px 12px; margin: 12px 0 4px; font-size: 14px; line-height: 1.5;
+  }
+  .speech::before {
+    content: ''; position: absolute; top: -8px; left: 50%; margin-left: -8px;
+    border: 8px solid transparent; border-top: 0; border-bottom-color: #fff8e1;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .avatar *, .avatar svg { animation: none !important; }
+  }
+
+  /* Sound toggles */
+  header { position: relative; }
+  .audio-toggles { position: absolute; top: 10px; right: 10px; display: flex; gap: 6px; }
+  .audio-btn {
+    width: 32px; height: 32px; border-radius: 50%; border: none; cursor: pointer;
+    background: rgba(255,255,255,.25); font-size: 15px; line-height: 1;
+  }
+  .audio-btn.off { opacity: .45; }
+  .mg-reward { font-weight: 800; color: var(--green); }
+
+  /* Mini game: nail timing */
+  .nail-board {
+    display: flex; justify-content: space-around; align-items: flex-end;
+    height: 90px; padding: 0 8px 12px;
+    background: linear-gradient(#c89f6f, #a47148); border-radius: 12px;
+  }
+  .nail { width: 16px; height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; transform-origin: bottom center; transition: transform .15s; }
+  .nhead { width: 16px; height: 5px; background: #607d8b; border-radius: 2px; }
+  .nshaft { width: 4px; height: 40px; background: #cfd8dc; transition: height .15s; }
+  .nail.current .nhead { background: var(--orange); box-shadow: 0 0 0 3px rgba(243,112,33,.4); }
+  .nail.perfect .nshaft { height: 0; }
+  .nail.perfect .nhead { background: var(--green); }
+  .nail.good .nshaft { height: 12px; }
+  .nail.good .nhead { background: #e0a100; }
+  .nail.bent { transform: rotate(40deg); }
+  .nail.bent .nhead { background: #c62828; }
+  .nail-meter { position: relative; height: 34px; background: #eceff1; border-radius: 17px; margin-top: 14px; overflow: hidden; }
+  .zone { position: absolute; top: 0; bottom: 0; }
+  .zone.good { background: #a5d6a7; }
+  .zone.perfect { background: var(--green); }
+  .marker { position: absolute; top: 0; bottom: 0; width: 4px; margin-left: -2px; background: #212121; }
+
+  /* Mini game: pipe puzzle */
+  .pipe-wrap { position: relative; padding: 0 30px; }
+  .pipe-grid { display: grid; gap: 3px; background: #eceff1; border-radius: 10px; padding: 3px; }
+  .pipe-cell { aspect-ratio: 1; border: none; background: #fff; border-radius: 6px; padding: 0; cursor: pointer; }
+  .pipe-cell svg { display: block; width: 100%; height: 100%; }
+  .pipe-end { position: absolute; font-size: 22px; transform: translateY(-50%); }
+  .pipe-src { left: 2px; }
+  .pipe-dst { right: 2px; }
+  .pipe-wrap.solved .pipe-grid { background: #c8e6c9; }
+
+  /* Mini game: placing items */
+  .wish { background: #fff8e1; border-radius: 12px; padding: 10px 12px; font-size: 13px; line-height: 1.6; }
+  .wish b { display: block; margin-bottom: 2px; }
+  .wish-row.done { text-decoration: line-through; color: var(--muted); }
+  .room { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 10px; }
+  .slot {
+    border: 2px dashed #bcaaa4; background: #fafafa; border-radius: 10px; min-height: 70px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    cursor: pointer; font-size: 11px; color: var(--muted); padding: 4px;
+  }
+  .slot-item { font-size: 26px; }
+  .slot.filled { border-style: solid; border-color: var(--green); background: #e8f5e9; }
+  .slot.wrong { animation: shake .35s; border-color: #c62828; }
+  @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+  .tray { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; justify-content: center; }
+  .tray-item {
+    border: 2px solid var(--orange); background: #fff; border-radius: 10px; padding: 4px 8px;
+    font-size: 24px; display: flex; flex-direction: column; align-items: center; cursor: pointer; min-width: 64px;
+  }
+  .tray-item small { font-size: 10px; color: var(--muted); }
+  .tray-item.sel { background: var(--orange); }
+  .tray-item.sel small { color: #fff; }
+  .tray-item.used { visibility: hidden; }
+</style>
+</head>
+<body>
+<div class="game">
+  <header>
+    <div class="audio-toggles">
+      <button class="audio-btn" id="sfxBtn" title="Ses efektleri" aria-label="Ses efektleri">🔊</button>
+      <button class="audio-btn" id="ambBtn" title="Müzik" aria-label="Müzik">🎵</button>
+    </div>
+    <h1>Kasandaki Para</h1>
+    <div class="money" id="money">0 TL</div>
+    <div class="rates">
+      <span id="perClick">🔨 10 TL / tık</span>
+      <span id="perSec">👷 0 TL / sn</span>
+      <span id="perAuto" style="display:none"></span>
+    </div>
+    <div class="boosts" id="boosts"></div>
+  </header>
+
+  <div class="progress-wrap career">
+    <div class="career-head">
+      <span class="stars" id="stars">☆☆☆☆☆</span>
+      <span class="career-rank" id="rank">Rütbe: Çırak</span>
+    </div>
+    <div class="career-title" id="careerTitle"></div>
+    <ul class="goals" id="goals"></ul>
+  </div>
+
+  <section class="workshop">
+    <canvas id="shop"></canvas>
+    <div class="shop-nav">
+      <button class="nav-btn" id="navPrev" aria-label="Önceki bölüm">◀</button>
+      <span class="nav-label" id="navLabel"></span>
+      <button class="nav-btn" id="navNext" aria-label="Sonraki bölüm">▶</button>
+      <button class="nav-btn nav-all" id="navAll">🔍 Tümü</button>
+    </div>
+    <div class="shop-bar" id="shopBar">
+      <span id="capText"></span>
+      <button class="btn small" id="sectionBtn">🏗️ Bölüm Ekle</button>
+    </div>
+  </section>
+
+  <section class="job-card" id="jobCard">
+    <div class="job-head">
+      <span>📱 Ustabilir İş Emri</span>
+      <span id="jobRating"></span>
+    </div>
+    <div class="job-main">
+      <div class="avatar" id="jobAvatar"></div>
+      <div>
+        <div class="job-title" id="jobTitle"></div>
+        <div class="job-desc" id="jobDesc"></div>
+      </div>
+    </div>
+    <div class="job-actions" id="jobActions">
+      <button class="btn small" id="jobAccept">✅ Kabul Et</button>
+      <button class="btn small secondary" id="jobReject">Reddet</button>
+    </div>
+  </section>
+
+  <div class="click-area" id="clickArea">
+    <div class="btn-wrap">
+      <button id="workBtn">🔨 İşe Git<br>(Tıkla)</button>
+      <div class="hammers" id="hammers"></div>
+    </div>
+    <button id="eventBtn">🚨 Acil Çağrı!</button>
+  </div>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="tools">🛠️ Ekipman<span class="dot"></span></button>
+    <button class="tab" data-tab="team">👷 Ekip<span class="dot"></span></button>
+    <button class="tab" data-tab="ach">🏆 Başarım</button>
+    <button class="tab" data-tab="branch">🏅 Şube<span class="dot"></span></button>
+  </nav>
+
+  <section class="panel active" id="panel-tools">
+    <div class="panel-head"><h2>Ekipman Yükseltmeleri</h2></div>
+    <div class="subtabs" id="toolTabs"></div>
+    <div id="toolList"></div>
+  </section>
+
+  <section class="panel" id="panel-team">
+    <div class="panel-head">
+      <h2>Ekibini Kur</h2>
+      <div class="qty" id="qty">
+        <button data-q="1" class="active">×1</button>
+        <button data-q="10">×10</button>
+      </div>
+    </div>
+    <div id="teamList"></div>
+  </section>
+
+  <section class="panel" id="panel-ach">
+    <div class="ach-summary" id="achSummary"></div>
+    <div class="ach-grid" id="achGrid"></div>
+  </section>
+
+  <section class="panel" id="panel-branch">
+    <div class="prestige">
+      <div>Rozetlerin: <span class="big" id="rozetCount">0</span> 🏅 <span id="rozetBonus"></span></div>
+      <div>Yeni şube açınca kasandaki para, ekipmanların, ekibin ve atölye bölümlerin sıfırlanır; yıldızların, müşteri puanın ve başarımların kalır. Kazandığın her <b>Ustabilir Rozeti</b> tüm gelirini kalıcı olarak <b>%10</b> artırır.</div>
+      <div id="rozetHint"></div>
+      <button class="btn" id="prestigeBtn" disabled>Yeni Şube Aç</button>
+    </div>
+    <table class="stats" id="stats"></table>
+    <button class="btn danger" id="resetBtn">İlerlemeyi Sıfırla</button>
+  </section>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<div class="overlay mg" id="mg">
+  <div class="mg-box">
+    <div class="mg-title" id="mgTitle"></div>
+    <div class="mg-sub" id="mgSub"></div>
+    <div class="mg-timer"><div class="fill" id="mgTimeFill"></div><span id="mgTimeText"></span></div>
+    <div id="mgStage"></div>
+  </div>
+</div>
+
+<div class="overlay" id="modal">
+  <div class="modal">
+    <div class="icon" id="modalIcon"></div>
+    <h3 id="modalTitle"></h3>
+    <p id="modalText"></p>
+    <div class="actions" id="modalActions"></div>
+  </div>
+</div>
+
+<script>
+  // ---------- Config ----------
+  const SAVE_KEY = 'ustaniBuyut.v1';
+  const BASE_CLICK = 10;
+  const TEAM_GROWTH = 1.15;
+  const ROZET_BONUS = 0.10;
+  const ACH_BONUS = 0.02;
+
+  // Every equipment piece is bought at level 1 and upgraded level by level.
+  // Reaching a milestone level doubles that piece's effect.
+  const MILESTONES = [10, 25, 50];
+  const TOOL_GROUPS = {
+    click: { title: '🔨 El Aletleri', growth: 1.9,  max: 50 },
+    auto:  { title: '🤖 Otomasyon',   growth: 2.2,  max: 25 },
+    team:  { title: '⚙️ Makineler',   growth: 2.6,  max: 25 },
+    util:  { title: '📡 Destek',      growth: 3,    max: 10 },
+  };
+  // Click bonuses stack: bought in order at level 1 they give the original 10 → 25 → 100 → … values.
+  const TOOLS = [
+    { id: 'matkap',   group: 'click', name: 'Kaliteli Matkap Ucu (Koçtaş)', cost: 100,  bonus: 15 },
+    { id: 'canta',    group: 'click', name: 'Profesyonel Takım Çantası',    cost: 500,  bonus: 75 },
+    { id: 'vidalama', group: 'click', name: 'Akülü Vidalama Seti',          cost: 4e3,  bonus: 200 },
+    { id: 'lazer',    group: 'click', name: 'Lazerli Metre ve Su Terazisi', cost: 25e3, bonus: 700 },
+    { id: 'kirici',   group: 'click', name: 'Kırıcı Delici',                cost: 15e4, bonus: 3000 },
+    { id: 'atolye',   group: 'click', name: 'Tam Donanımlı Atölye',         cost: 1e6,  bonus: 11000 },
+    // Automation hits the central button for you, using the click value (minus Premium's share).
+    { id: 'otoCekic',  group: 'auto', name: 'Otomatik Çekiç',           cost: 1500 },
+    { id: 'civi',      group: 'auto', name: 'Pnömatik Çivi Tabancası',  cost: 25e3,  requires: 'otoCekic', growth: 2.6 },
+    { id: 'altinCivi', group: 'auto', name: 'Altın Çivi Kutusu',        cost: 1e5,   requires: 'otoCekic', growth: 3, max: 10 },
+    { id: 'yelek',    group: 'team', tier: 'cirak',     name: 'İş Güvenliği Seti',         cost: 750,   emoji: '🦺' },
+    { id: 'gonye',    group: 'team', tier: 'kalfa',     name: 'Gönye ve Şerit Metre Seti', cost: 8e3,   emoji: '📏' },
+    { id: 'kaynak',   group: 'team', tier: 'usta',      name: 'Kaynak Makinesi',           cost: 6e4,   emoji: '🔥' },
+    { id: 'tabanca',  group: 'team', tier: 'boya',      name: 'Boya Tabancası',            cost: 5e5,   emoji: '🎨' },
+    { id: 'seramik',  group: 'team', tier: 'tadilat',   name: 'Seramik Kesme Makinesi',    cost: 4e6,   emoji: '⚙️' },
+    { id: 'tablet',   group: 'team', tier: 'muteahhit', name: 'Proje Tableti',             cost: 3e7,   emoji: '💻' },
+    { id: 'kamyonet', group: 'team', tier: 'holding',   name: 'Şirket Kamyoneti',          cost: 25e7,  emoji: '🚚' },
+    { id: 'telsiz',   group: 'util', name: 'Acil Çağrı Telsizi',        cost: 5e3 },
+    { id: 'pano',     group: 'util', name: 'Vardiya Panosu',            cost: 2e4 },
+    { id: 'premium',  group: 'util', name: 'Ustabilir Premium Profil',  cost: 5e6 },
+  ];
+
+  const TEAM = [
+    { id: 'cirak',     name: 'Çırak',             icon: '👦',     base: 75,   rate: 1 },
+    { id: 'kalfa',     name: 'Kalfa',             icon: '🧑‍🔧', base: 800,  rate: 7 },
+    { id: 'usta',      name: 'Usta',              icon: '👷',     base: 6e3,  rate: 35 },
+    { id: 'boya',      name: 'Boya Ekibi',        icon: '🎨',     base: 5e4,  rate: 200 },
+    { id: 'tadilat',   name: 'Tadilat Ekibi',     icon: '🏗️',     base: 4e5,  rate: 1200 },
+    { id: 'muteahhit', name: 'Müteahhit Firması', icon: '🏢',     base: 3e6,  rate: 7000 },
+    { id: 'holding',   name: 'İnşaat Holdingi',   icon: '🌆',     base: 25e6, rate: 4e4 },
+  ];
+
+  const RANKS = [
+    { min: 0,    name: 'Çırak' },
+    { min: 1e3,  name: 'Kalfa' },
+    { min: 2500, name: 'Usta' },
+    { min: 5e3,  name: 'Ustabaşı' },
+    { min: 5e4,  name: 'Bölge Ustası' },
+    { min: 1e6,  name: 'Şehrin Ustası' },
+    { min: 5e7,  name: "Türkiye'nin Ustası" },
+    { min: 1e9,  name: 'Efsane Usta' },
+  ];
+
+  const teamTotal = s => TEAM.reduce((a, t) => a + (s.team[t.id] || 0), 0);
+  const ACHIEVEMENTS = [
+    { id: 'ilkIs',     name: 'İlk İş',              desc: 'İlk tıklamanı yap',            test: s => s.clicks >= 1 },
+    { id: 'tik100',    name: 'Çalışkan Eller',      desc: '100 kez tıkla',                test: s => s.clicks >= 100 },
+    { id: 'tik1k',     name: 'Tıklama Ustası',      desc: '1.000 kez tıkla',              test: s => s.clicks >= 1e3 },
+    { id: 'tik10k',    name: 'Nasırlı Eller',       desc: '10.000 kez tıkla',             test: s => s.clicks >= 1e4 },
+    { id: 'super',     name: 'İlk Sermaye',         desc: 'Toplam 5.000 TL kazan',        test: s => s.lifetimeEarned >= 5e3 },
+    { id: 'yildiz3',   name: 'Yükselen Usta',       desc: '3 yıldıza ulaş',               test: s => s.stars >= 3 },
+    { id: 'yildiz5',   name: '5 Yıldızlı Süper Usta', desc: '5 yıldıza ulaş',             test: s => s.stars >= 5 },
+    { id: 'is10',      name: 'Güvenilir Usta',      desc: '10 iş emri tamamla',           test: s => s.jobsDone >= 10 },
+    { id: 'is50',      name: 'Aranan Usta',         desc: '50 iş emri tamamla',           test: s => s.jobsDone >= 50 },
+    { id: 'mukemmel',  name: 'Kusursuz Hizmet',     desc: '10 kez 5★ yorum al',           test: s => s.perfectJobs >= 10 },
+    { id: 'yuzbin',    name: 'İşler Büyüyor',       desc: 'Toplam 100.000 TL kazan',      test: s => s.lifetimeEarned >= 1e5 },
+    { id: 'milyon',    name: 'Milyoner Usta',       desc: 'Toplam 1 Mn TL kazan',         test: s => s.lifetimeEarned >= 1e6 },
+    { id: 'milyar',    name: 'Sektör Devi',         desc: 'Toplam 1 Mr TL kazan',         test: s => s.lifetimeEarned >= 1e9 },
+    { id: 'ekip1',     name: 'Ekip Kuruldu',        desc: 'İlk ekip üyeni al',            test: s => teamTotal(s) >= 1 },
+    { id: 'ekip50',    name: 'Kalabalık Şantiye',   desc: '50 ekip üyesine ulaş',         test: s => teamTotal(s) >= 50 },
+    { id: 'ekip200',   name: 'Dev Organizasyon',    desc: '200 ekip üyesine ulaş',        test: s => teamTotal(s) >= 200 },
+    { id: 'hiz',       name: 'Seri Üretim',         desc: 'Saniyede 1.000 TL kazan',      test: () => perSec() >= 1e3 },
+    { id: 'tamTakim',  name: 'Tam Takım',           desc: 'Tüm ekipmanları satın al',     test: s => TOOLS.every(t => s.tools[t.id]) },
+    { id: 'gelistir',  name: 'İlk Geliştirme',      desc: 'Bir ekipmanı Sv. 2\'ye çıkar',  test: s => Object.values(s.tools).some(l => l >= 2) },
+    { id: 'sv10',      name: 'Usta İşi',            desc: 'Bir ekipmanı Sv. 10\'a çıkar',  test: s => Object.values(s.tools).some(l => l >= 10) },
+    { id: 'makine',    name: 'Makine Parkı',        desc: 'Tüm ekip makinelerini al',     test: s => TOOLS.every(t => t.group !== 'team' || s.tools[t.id]) },
+    { id: 'oto1',      name: 'Otomasyon',           desc: 'Otomatik Çekiç al',            test: s => s.tools.otoCekic >= 1 },
+    { id: 'civi10k',   name: 'Çivi Fabrikası',      desc: '10.000 çiviyi otomatik çak',   test: s => s.autoHits >= 1e4 },
+    { id: 'altin',     name: 'Altın Alet',         desc: 'Bir el aletini Sv. 50\'ye çıkar', test: s => TOOLS.some(t => t.group === 'click' && s.tools[t.id] >= 50) },
+    { id: 'cagri1',    name: 'Acil Servis',         desc: 'İlk acil çağrıyı yakala',      test: s => s.events >= 1 },
+    { id: 'cagri25',   name: 'Nöbetçi Usta',        desc: '25 acil çağrı yakala',         test: s => s.events >= 25 },
+    { id: 'sube1',     name: 'İlk Şube',            desc: 'İlk yeni şubeni aç',           test: s => s.prestiges >= 1 },
+    { id: 'bolum4',    name: 'Büyüyen Atölye',      desc: 'Atölyeyi 4 bölüme çıkar',      test: s => s.sections >= 4 },
+    { id: 'bolum12',   name: 'Dev Atölye',          desc: 'Tüm 12 bölümü aç',             test: s => s.sections >= 12 },
+  ];
+
+  // ---------- Star career ----------
+  // The game's real goal: climb from 0 to 5 stars on your Ustabilir profile. Each star needs
+  // all of its goals; ★5 shows the campaign message. Counters are career-wide except
+  // team/sections/levels, which describe the current branch.
+  const STAR_BONUS = 0.10;
+  const maxToolLevel = s => Math.max(0, ...Object.values(s.tools));
+  const STAR_GOALS = [
+    [ // ★1
+      { label: 'Toplam 2.500 TL kazan',     cur: s => s.lifetimeEarned, target: 2500, money: true },
+      { label: '2 ekipman yükseltmesi yap', cur: s => s.upgrades, target: 2 },
+      { label: '2 iş emri tamamla',         cur: s => s.jobsDone, target: 2 },
+    ],
+    [ // ★2
+      { label: 'Toplam 25.000 TL kazan',    cur: s => s.lifetimeEarned, target: 25e3, money: true },
+      { label: '6 ekipman yükseltmesi yap', cur: s => s.upgrades, target: 6 },
+      { label: '5 kişilik ekip kur',        cur: s => teamTotal(s), target: 5 },
+      { label: '5 iş emri tamamla',         cur: s => s.jobsDone, target: 5 },
+      { label: '3 kez 4★ veya 5★ yorum al', cur: s => s.goodJobs, target: 3 },
+    ],
+    [ // ★3
+      { label: 'Toplam 500.000 TL kazan',    cur: s => s.lifetimeEarned, target: 5e5, money: true },
+      { label: '12 ekipman yükseltmesi yap', cur: s => s.upgrades, target: 12 },
+      { label: '15 kişilik ekip kur',        cur: s => teamTotal(s), target: 15 },
+      { label: 'Atölyeyi 2 bölüme çıkar',    cur: s => s.sections, target: 2 },
+      { label: '12 iş emri tamamla',         cur: s => s.jobsDone, target: 12 },
+    ],
+    [ // ★4
+      { label: 'Toplam 20 Mn TL kazan',      cur: s => s.lifetimeEarned, target: 2e7, money: true },
+      { label: '20 ekipman yükseltmesi yap', cur: s => s.upgrades, target: 20 },
+      { label: 'Otomatik Çekiç Sv. 5',       cur: s => s.tools.otoCekic || 0, target: 5 },
+      { label: '25 iş emri tamamla',         cur: s => s.jobsDone, target: 25 },
+      { label: '15 kez 4★ veya 5★ yorum al', cur: s => s.goodJobs, target: 15 },
+    ],
+    [ // ★5
+      { label: 'Toplam 1 Mr TL kazan',       cur: s => s.lifetimeEarned, target: 1e9, money: true },
+      { label: '30 ekipman yükseltmesi yap', cur: s => s.upgrades, target: 30 },
+      { label: 'Atölyeyi 3 bölüme çıkar',    cur: s => s.sections, target: 3 },
+      { label: 'Bir ekipmanı Sv. 10 yap',    cur: s => maxToolLevel(s), target: 10 },
+      { label: '40 iş emri tamamla',         cur: s => s.jobsDone, target: 40 },
+      { label: '10 kez 5★ yorum al',         cur: s => s.perfectJobs, target: 10 },
+    ],
+  ];
+
+  // ---------- Job orders ----------
+  // Each job is played as a mini game (see MINIGAMES); `game` picks it, `theme` dresses it.
+  // Owning the job's team tier gives +25% time; bigger jobs unlock with stars.
+  const RATING_WINDOW = 20;   // customer rating = average of the last 20 reviews
+  const JOB_TYPES = [
+    { name: 'Raf montajı',                  emoji: '📚', tier: 'cirak',     game: 'nail' },
+    { name: 'Kapı menteşesi değişimi',      emoji: '🚪', tier: 'cirak',     game: 'nail' },
+    { name: 'Mutfak dolabı montajı',        emoji: '🗄️', tier: 'kalfa',     game: 'nail' },
+    { name: 'Parke döşeme',                 emoji: '🪵', tier: 'kalfa',     game: 'nail' },
+    { name: 'Priz ve anahtar tesisatı',     emoji: '🔌', tier: 'usta',      game: 'pipe',  theme: 'electric' },
+    { name: 'Musluk tamiri',                emoji: '🚰', tier: 'usta',      game: 'pipe',  theme: 'water' },
+    { name: 'Boya sonrası salon yerleşimi', emoji: '🎨', tier: 'boya',      game: 'place', theme: 'salon' },
+    { name: 'Banyo tesisatı',               emoji: '🛁', tier: 'tadilat',   game: 'pipe',  theme: 'water', minStars: 2 },
+    { name: 'Komple ev tadilatı',           emoji: '🏠', tier: 'muteahhit', game: 'place', theme: 'ev',    minStars: 3 },
+    { name: 'Site projesi',                 emoji: '🏙️', tier: 'holding',   game: 'place', theme: 'site',  minStars: 4 },
+  ];
+  // Each customer keeps one look; only the expression changes (see avatarSvg).
+  const CUSTOMERS = [
+    { name: 'Ayşe Hanım',  skin: '#f1c27d', hair: '#4e342e', shirt: '#ec407a', style: 'long' },
+    { name: 'Mehmet Bey',  skin: '#e0ac69', hair: '#212121', shirt: '#1e88e5', style: 'short', mustache: true },
+    { name: 'Zeynep Hanım', skin: '#ffdbac', hair: '#8d6e63', shirt: '#7e57c2', style: 'bob', glasses: true },
+    { name: 'Ali Bey',     skin: '#c68642', hair: '#3e2723', shirt: '#43a047', style: 'curly' },
+    { name: 'Elif Hanım',  skin: '#f1c27d', hair: '#bf360c', shirt: '#26a69a', style: 'bun' },
+    { name: 'Hasan Bey',   skin: '#e0ac69', hair: '#9e9e9e', shirt: '#6d4c41', style: 'bald', mustache: true, glasses: true },
+    { name: 'Fatma Hanım', skin: '#ffdbac', hair: '#757575', shirt: '#8e24aa', style: 'bun', glasses: true },
+    { name: 'Can Bey',     skin: '#f1c27d', hair: '#5d4037', shirt: '#f4511e', style: 'short', beard: true },
+    { name: 'Selin Hanım', skin: '#c68642', hair: '#212121', shirt: '#fbc02d', style: 'long' },
+    { name: 'Murat Bey',   skin: '#ffdbac', hair: '#6d4c41', shirt: '#546e7a', style: 'curly', beard: true },
+  ];
+  const ASKS = [
+    'Usta, bu iş için yardımın lazım. Halledebilir misin?',
+    'Bugün bitirebilir miyiz sence?',
+    'Nasıl yapacağız, bir fikrin var mı?',
+    'Daha önce böyle bir iş yaptın mı?',
+    'Ne kadar sürer acaba?',
+  ];
+  const REVIEWS = {
+    5: ['Çok hızlı ve temiz iş, teşekkürler!', 'Tam bir usta, herkese tavsiye ederim!', 'Beklediğimden çok daha hızlı bitti!'],
+    4: ['Güzel iş çıkardı, memnun kaldım.', 'Temiz çalıştı, tavsiye ederim.'],
+    3: ['İş tamam ama biraz aceleye gelmiş.', 'Fena değil, idare eder.'],
+    2: ['Beklediğim gibi olmadı.', 'Özensiz bir iş çıktı.'],
+    1: ['Hiç memnun kalmadım.', 'İş yarım kaldı, başka usta çağırmam gerekecek.'],
+  };
+
+  // ---------- State ----------
+  const newState = () => ({
+    money: 0,            // spendable balance
+    runEarned: 0,        // earned since the last branch reset
+    lifetimeEarned: 0,   // never resets; drives ranks, star goals and rozets
+    stars: 0,            // career stars (0–5); survive branch resets
+    finalShown: false,   // the ★5 campaign message was shown
+    upgrades: 0,         // equipment purchases + level-ups, career-wide
+    jobsDone: 0,
+    goodJobs: 0,         // jobs rated 4★ or 5★ (star goals count these, so a bad review never undoes progress)
+    perfectJobs: 0,      // jobs rated 5★
+    ratings: [],         // last RATING_WINDOW customer ratings
+    clicks: 0,           // manual clicks only
+    autoHits: 0,         // hits made by automation
+    tools: {},          // equipment id -> level (missing = not owned)
+    team: {},
+    sections: 1,        // workshop sections; each adds team capacity
+    rozet: 0,
+    prestiges: 0,
+    achievements: {},
+    events: 0,
+    playTime: 0,
+    lastSave: Date.now(),
+  });
+
+  let state = newState();
+  let boosts = { click: null, prod: null };  // not saved: they are short-lived
+  let buyQty = 1;
+  let nextEventAt = Date.now() + rand(30, 60) * 1000;   // first call comes a bit sooner
+  let eventExpiresAt = 0;
+  let lastRankIndex = 0;
+  let job = { phase: 'wait', until: Date.now() + 8000, order: null };   // not saved; first offer after 8 s
+
+  function rand(a, b) { return a + Math.random() * (b - a); }
+  const $ = id => document.getElementById(id);
+
+  // ---------- Formatting ----------
+  function fmtNum(n) {
+    n = Math.floor(n);
+    const units = [[1e12, 'Tn'], [1e9, 'Mr'], [1e6, 'Mn']];
+    for (const [v, s] of units) {
+      if (n >= v) return (n / v).toLocaleString('tr-TR', { maximumFractionDigits: 2 }) + ' ' + s;
+    }
+    return n.toLocaleString('tr-TR');
+  }
+  const fmt = n => fmtNum(n) + ' TL';
+  function fmtTime(sec) {
+    sec = Math.floor(sec);
+    const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60;
+    if (h) return `${h} sa ${m} dk`;
+    if (m) return `${m} dk ${s} sn`;
+    return `${s} sn`;
+  }
+
+  // ---------- Economy ----------
+  const achCount = () => Object.keys(state.achievements).length;
+  const globalMult = () => (1 + ROZET_BONUS * state.rozet) * (1 + ACH_BONUS * achCount()) * (1 + STAR_BONUS * state.stars);
+  const ratingAvg = (s = state) => s.ratings.length ? s.ratings.reduce((a, r) => a + r, 0) / s.ratings.length : 0;
+  const boostMult = (b) => (b && b.until > Date.now()) ? b.mult : 1;
+
+  // ---------- Equipment levels & effects ----------
+  const toolLevel = id => state.tools[id] || 0;
+  const toolMax = t => t.max || TOOL_GROUPS[t.group].max;
+  const milestoneMult = L => Math.pow(2, MILESTONES.filter(m => L >= m).length);
+  const upgradeCost = t => Math.ceil(t.cost * Math.pow(t.growth || TOOL_GROUPS[t.group].growth, toolLevel(t.id)));
+  const machineFor = tier => TOOLS.find(t => t.tier === tier);
+
+  // Level 1 gives the full bonus (keeping the original 10 → 25 → 100 progression); each further level +25% of it.
+  const clickBonus = (t, L) => L ? t.bonus * (1 + 0.25 * (L - 1)) * milestoneMult(L) : 0;
+  const machineMult = L => (1 + 0.25 * L) * milestoneMult(L);
+  const tierMult = tier => machineMult(toolLevel(machineFor(tier).id));
+  const eventIntervalMult = () => 1 - 0.06 * toolLevel('telsiz');
+  const eventRewardMult = () => 1 + 0.2 * toolLevel('telsiz');
+  const offlineRate = () => 0.5 + 0.05 * toolLevel('pano');
+  const offlineCapSec = () => (8 + 1.6 * toolLevel('pano')) * 3600;
+  const premiumShare = (L = toolLevel('premium')) => L ? 0.1 + 0.02 * (L - 1) : 0;
+  const hitsPerSec = (L = toolLevel('otoCekic')) => 0.3 * L * milestoneMult(L);
+  const autoPower = (L = toolLevel('civi')) => (1 + 0.2 * L) * milestoneMult(L);
+  const critChance = (L = toolLevel('altinCivi')) => 0.02 * L;
+  const CRIT_MULT = 10;
+  const fmtDec = n => n.toLocaleString('tr-TR', { maximumFractionDigits: 1 });
+
+  const fmtMult = m => '×' + m.toLocaleString('tr-TR', { maximumFractionDigits: 1 });
+  function toolEffect(t, L) {
+    if (t.group === 'click') return `tık +${fmt(clickBonus(t, L))}`;
+    if (t.group === 'team') return `${TEAM.find(x => x.id === t.tier).name} üretimi ${fmtMult(machineMult(L))}`;
+    if (t.id === 'otoCekic') return `saniyede ${fmtDec(hitsPerSec(L))} otomatik vuruş`;
+    if (t.id === 'civi') return `otomatik vuruş gücü ${fmtMult(autoPower(L))}`;
+    if (t.id === 'altinCivi') return `%${2 * L} ihtimalle ×${CRIT_MULT} kritik vuruş`;
+    if (t.id === 'telsiz') return `çağrılar %${Math.round(6 * L)} daha sık, ödüller ${fmtMult(1 + 0.2 * L)}`;
+    if (t.id === 'pano') return `çevrimdışı %${Math.round((0.5 + 0.05 * L) * 100)} hız, ${(8 + 1.6 * L).toLocaleString('tr-TR')} saat`;
+    if (t.id === 'premium') return `her tıka saniyelik gelirden %${Math.round(premiumShare(L) * 100)} ek pay`;
+    return '';
+  }
+  // Just the numbers, for the "current → next level" preview.
+  function toolEffectShort(t, L) {
+    if (t.group === 'click') return '+' + fmt(clickBonus(t, L));
+    if (t.group === 'team') return fmtMult(machineMult(L));
+    if (t.id === 'otoCekic') return `${fmtDec(hitsPerSec(L))}/sn`;
+    if (t.id === 'civi') return fmtMult(autoPower(L));
+    if (t.id === 'altinCivi') return `%${2 * L}`;
+    if (t.id === 'telsiz') return `%${Math.round(6 * L)} / ${fmtMult(1 + 0.2 * L)}`;
+    if (t.id === 'pano') return `%${Math.round((0.5 + 0.05 * L) * 100)} / ${(8 + 1.6 * L).toLocaleString('tr-TR')} sa`;
+    if (t.id === 'premium') return `%${Math.round(premiumShare(L) * 100)}`;
+    return '';
+  }
+  const MILESTONE_LABEL = { 10: "Sv. 10'da", 25: "Sv. 25'te", 50: "Sv. 50'de" };
+
+  function toolClick() {
+    return TOOLS.reduce((v, t) => t.group === 'click' ? v + clickBonus(t, toolLevel(t.id)) : v, BASE_CLICK);
+  }
+  function perSec(withBoost = true) {
+    const raw = TEAM.reduce((a, t) => a + (state.team[t.id] || 0) * t.rate * tierMult(t.id), 0);
+    return raw * globalMult() * (withBoost ? boostMult(boosts.prod) : 1);
+  }
+  function clickValue() {
+    return toolClick() * globalMult() * boostMult(boosts.click) + perSec() * premiumShare();
+  }
+  // One automatic hit: click value without Premium's share, scaled by the nail gun.
+  function autoHitValue(withBoost = true) {
+    return toolClick() * globalMult() * (withBoost ? boostMult(boosts.click) : 1) * autoPower();
+  }
+  // Expected automation income per second (crits averaged in), for display and offline earnings.
+  function autoPerSec(withBoost = true) {
+    return hitsPerSec() * autoHitValue(withBoost) * (1 + critChance() * (CRIT_MULT - 1));
+  }
+  function teamCost(t, qty) {
+    const owned = state.team[t.id] || 0;
+    return Math.ceil(t.base * Math.pow(TEAM_GROWTH, owned) * (Math.pow(TEAM_GROWTH, qty) - 1) / (TEAM_GROWTH - 1));
+  }
+  function potentialRozet() {
+    return Math.max(0, Math.floor(Math.sqrt(state.lifetimeEarned / 1e6)) - state.rozet);
+  }
+  function earn(n) {
+    state.money += n;
+    state.runEarned += n;
+    state.lifetimeEarned += n;
+  }
+
+  // ---------- Save / load ----------
+  function save() {
+    state.lastSave = Date.now();
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) { /* storage unavailable */ }
+  }
+  function load() {
+    try {
+      const raw = localStorage.getItem(SAVE_KEY);
+      if (raw) {
+        state = Object.assign(newState(), JSON.parse(raw));
+        // Saves from before equipment levels stored `true` for owned tools.
+        for (const k in state.tools) if (state.tools[k] === true) state.tools[k] = 1;
+        // Saves from before the star career: count owned levels as past upgrades.
+        if (!state.upgrades) state.upgrades = Object.values(state.tools).reduce((a, l) => a + l, 0);
+        // Saves from before the workshop existed: open enough sections for the team they already have.
+        while (state.sections < MAX_SECTIONS && totalCapacity() < teamTotal(state)) state.sections++;
+      }
+    } catch (e) { state = newState(); }
+  }
+
+  // ---------- UI: toasts & modal ----------
+  function toast(msg) {
+    const el = document.createElement('div');
+    el.className = 'toast';
+    el.textContent = msg;
+    $('toasts').appendChild(el);
+    setTimeout(() => el.remove(), 3500);
+  }
+  function showModal({ icon, title = '', text, buttons }) {
+    $('modalIcon').textContent = icon;
+    $('modalTitle').textContent = title;
+    $('modalTitle').style.display = title ? '' : 'none';
+    $('modalText').textContent = text;
+    const actions = $('modalActions');
+    actions.innerHTML = '';
+    buttons.forEach(b => {
+      const btn = document.createElement('button');
+      btn.className = 'btn ' + (b.cls || '');
+      btn.textContent = b.label;
+      btn.onclick = () => { $('modal').classList.remove('show'); b.onClick && b.onClick(); };
+      actions.appendChild(btn);
+    });
+    $('modal').classList.add('show');
+  }
+
+  // ---------- UI: build lists once, update in place ----------
+  const toolEls = {}, toolTabEls = {}, teamEls = {}, achEls = {};
+  let activeToolGroup = 'click';
+
+  function setToolGroup(group) {
+    activeToolGroup = group;
+    Object.entries(toolTabEls).forEach(([g, tab]) => tab.classList.toggle('active', g === group));
+    TOOLS.forEach(t => { toolEls[t.id].btn.style.display = t.group === group ? '' : 'none'; });
+  }
+  $('toolTabs').addEventListener('click', e => {
+    const tab = e.target.closest('.subtab');
+    if (tab) setToolGroup(tab.dataset.group);
+  });
+
+  function makeItem(container, id) {
+    const btn = document.createElement('button');
+    btn.className = 'item';
+    btn.dataset.id = id;
+    btn.innerHTML = '<div><div class="name"></div><div class="desc"></div></div><div class="cost"></div>';
+    container.appendChild(btn);
+    return { btn, name: btn.querySelector('.name'), desc: btn.querySelector('.desc'), cost: btn.querySelector('.cost') };
+  }
+
+  function buildUI() {
+    Object.entries(TOOL_GROUPS).forEach(([group, g]) => {
+      const tab = document.createElement('button');
+      tab.className = 'subtab';
+      tab.dataset.group = group;
+      tab.innerHTML = '<span></span><span class="dot"></span>';
+      tab.firstChild.textContent = g.title;
+      $('toolTabs').appendChild(tab);
+      toolTabEls[group] = tab;
+      TOOLS.filter(t => t.group === group).forEach(t => { toolEls[t.id] = makeItem($('toolList'), t.id); });
+    });
+    setToolGroup(activeToolGroup);
+    TEAM.forEach(t => {
+      teamEls[t.id] = makeItem($('teamList'), t.id);
+      // Stripe matches the worker's shirt color in the workshop view.
+      teamEls[t.id].btn.style.borderLeft = `8px solid ${TIER_LOOK[t.id].shirt === '#fafafa' ? '#bdbdbd' : TIER_LOOK[t.id].shirt}`;
+    });
+    ACHIEVEMENTS.forEach(a => {
+      const el = document.createElement('div');
+      el.className = 'ach';
+      el.innerHTML = `<div class="t"></div><div></div>`;
+      el.children[0].textContent = '🔒 ' + a.name;
+      el.children[1].textContent = a.desc;
+      $('achGrid').appendChild(el);
+      achEls[a.id] = el;
+    });
+  }
+
+  // Team machines need their tier hired this branch; automation add-ons need the hammer itself.
+  function toolLockReason(t) {
+    if (t.tier && !state.team[t.tier]) return `Önce bir ${TEAM.find(x => x.id === t.tier).name} işe al`;
+    if (t.requires && !toolLevel(t.requires)) return `Önce ${TOOLS.find(x => x.id === t.requires).name} al`;
+    return null;
+  }
+
+  function updateTools() {
+    let any = false;
+    const groupAny = {};
+    TOOLS.forEach(t => {
+      const el = toolEls[t.id];
+      const L = toolLevel(t.id), max = toolMax(t);
+      const lock = toolLockReason(t);
+      if (lock) {
+        el.btn.classList.add('locked');
+        el.btn.disabled = true;
+        el.name.textContent = `🔒 ${t.name}`;
+        el.desc.textContent = lock;
+        el.cost.textContent = '???';
+        return;
+      }
+      el.btn.classList.remove('locked');
+      el.name.textContent = (t.emoji ? t.emoji + ' ' : '') + t.name + (L ? ` · Sv. ${L}` : '');
+      const next = MILESTONES.find(m => m > L && m <= max);
+      const hint = L && next && next - L <= 5 ? ` · ${MILESTONE_LABEL[next]} ×2!` : '';
+      el.desc.textContent =
+        L === 0 ? 'Alınca: ' + toolEffect(t, 1)
+        : L >= max ? toolEffect(t, L) + ' (maks.)'
+        : `${toolEffect(t, L)} → ${toolEffectShort(t, L + 1)}${hint}`;
+      el.btn.classList.toggle('owned', L >= max);
+      if (L >= max) {
+        el.btn.disabled = true;
+        el.cost.textContent = '✓ Maks.';
+        return;
+      }
+      const cost = upgradeCost(t);
+      el.btn.disabled = state.money < cost;
+      el.cost.textContent = (L ? '⬆️ ' : '') + fmt(cost);
+      if (!el.btn.disabled) { any = true; groupAny[t.group] = true; }
+    });
+    // Green dots so an affordable upgrade in a hidden sub-tab isn't missed.
+    Object.entries(toolTabEls).forEach(([g, tab]) => tab.classList.toggle('has-affordable', !!groupAny[g]));
+    document.querySelector('[data-tab="tools"]').classList.toggle('has-affordable', any);
+  }
+
+  function updateTeam() {
+    let any = false;
+    const mult = globalMult();
+    const qty = Math.min(buyQty, freeCapacity());
+    TEAM.forEach((t, i) => {
+      const el = teamEls[t.id];
+      const owned = state.team[t.id] || 0;
+      // Hide far-future hires until the player gets close, to keep some discovery.
+      const visible = i === 0 || owned > 0 || state.lifetimeEarned >= t.base * 0.5
+        || (state.team[TEAM[i - 1].id] || 0) > 0;
+      el.btn.classList.toggle('locked', !visible);
+      if (!visible) {
+        el.name.textContent = '🔒 ???';
+        el.desc.textContent = 'Daha fazla kazan, kilidi açılsın';
+        el.cost.textContent = '???';
+        el.btn.disabled = true;
+        return;
+      }
+      el.name.textContent = `${t.icon} ${t.name}` + (owned ? ` (${owned})` : '');
+      if (qty <= 0) {
+        el.desc.textContent = 'Atölye dolu — yeni bölüm ekle';
+        el.cost.textContent = '🚫 Yer yok';
+        el.btn.disabled = true;
+        return;
+      }
+      const cost = teamCost(t, qty);
+      el.desc.textContent = `Her biri +${fmt(t.rate * mult)} / sn`;
+      el.cost.textContent = (qty > 1 ? `×${qty} ` : '') + fmt(cost);
+      el.btn.disabled = state.money < cost;
+      if (!el.btn.disabled) any = true;
+    });
+    if (qty <= 0 && state.sections < MAX_SECTIONS && state.money >= sectionCost()) any = true;
+    document.querySelector('[data-tab="team"]').classList.toggle('has-affordable', any);
+  }
+
+  function updateAchievements() {
+    ACHIEVEMENTS.forEach(a => {
+      const done = !!state.achievements[a.id];
+      const el = achEls[a.id];
+      if (el.classList.contains('done') !== done) {
+        el.classList.toggle('done', done);
+        el.children[0].textContent = (done ? '🏆 ' : '🔒 ') + a.name;
+      }
+    });
+    $('achSummary').textContent =
+      `${achCount()} / ${ACHIEVEMENTS.length} başarım · her biri tüm gelire +%${ACH_BONUS * 100}`;
+  }
+
+  function updateBranch() {
+    const p = potentialRozet();
+    $('rozetCount').textContent = state.rozet;
+    $('rozetBonus').textContent = state.rozet ? `(+%${Math.round(state.rozet * ROZET_BONUS * 100)} gelir)` : '';
+    const nextNeed = Math.pow(state.rozet + p + 1, 2) * 1e6;
+    $('rozetHint').textContent = p > 0
+      ? `Şimdi şube açarsan ${p} rozet kazanırsın.`
+      : `İlk rozet için toplam kazancın ${fmt(nextNeed)} olmalı (şu an ${fmt(state.lifetimeEarned)}).`;
+    $('prestigeBtn').disabled = p < 1;
+    $('prestigeBtn').textContent = p > 0 ? `Yeni Şube Aç (+${p} 🏅)` : 'Yeni Şube Aç';
+    document.querySelector('[data-tab="branch"]').classList.toggle('has-affordable', p > 0);
+
+    const rows = [
+      ['Tüm zamanlar kazanç', fmt(state.lifetimeEarned)],
+      ['Bu şubede kazanç', fmt(state.runEarned)],
+      ['Yıldız', '★'.repeat(state.stars) + '☆'.repeat(5 - state.stars)],
+      ['Tamamlanan iş emri', state.jobsDone.toLocaleString('tr-TR')],
+      ['Müşteri puanı', state.ratings.length ? ratingAvg().toLocaleString('tr-TR', { maximumFractionDigits: 1 }) + ' ★' : '—'],
+      ['Toplam tıklama', state.clicks.toLocaleString('tr-TR')],
+      ['Otomatik çakılan çivi', state.autoHits.toLocaleString('tr-TR')],
+      ['Ekip üyesi', teamTotal(state).toLocaleString('tr-TR')],
+      ['Yakalanan acil çağrı', state.events.toLocaleString('tr-TR')],
+      ['Açılan şube', state.prestiges.toLocaleString('tr-TR')],
+      ['Oynama süresi', fmtTime(state.playTime)],
+    ];
+    $('stats').innerHTML = rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('');
+  }
+
+  function rankIndex() {
+    let i = 0;
+    RANKS.forEach((r, j) => { if (state.lifetimeEarned >= r.min) i = j; });
+    return i;
+  }
+
+  function updateHeader() {
+    $('money').textContent = fmt(state.money);
+    $('perClick').textContent = `🔨 ${fmt(clickValue())} / tık`;
+    $('perSec').textContent = `👷 ${fmt(perSec())} / sn`;
+    const autoRate = autoPerSec();
+    $('perAuto').style.display = autoRate > 0 ? '' : 'none';
+    $('perAuto').textContent = `🤖 ${fmt(autoRate)} / sn`;
+    updateHammers();
+
+    const now = Date.now();
+    const b = [];
+    if (boosts.click && boosts.click.until > now) b.push(`⚡ Tık ×${boosts.click.mult} · ${Math.ceil((boosts.click.until - now) / 1000)} sn`);
+    if (boosts.prod && boosts.prod.until > now) b.push(`📈 Ekip ×${boosts.prod.mult} · ${Math.ceil((boosts.prod.until - now) / 1000)} sn`);
+    $('boosts').innerHTML = b.map(x => `<span>${x}</span>`).join('');
+
+    $('rank').textContent = 'Rütbe: ' + RANKS[rankIndex()].name;
+  }
+
+  // ---------- Star career UI ----------
+  const goalMet = g => g.cur(state) >= g.target;
+  function goalValue(g) {
+    const v = g.cur(state);
+    if (g.money) return `${fmtNum(Math.min(v, g.target))} / ${fmtNum(g.target)}`;
+    return `${Math.min(v, g.target).toLocaleString('tr-TR')} / ${g.target.toLocaleString('tr-TR')}`;
+  }
+
+  function updateCareer() {
+    $('stars').textContent = '★'.repeat(state.stars) + '☆'.repeat(5 - state.stars);
+    const goals = STAR_GOALS[state.stars];
+    if (!goals) {
+      $('careerTitle').textContent = '5 Yıldızlı Süper Usta! Şimdi işini büyütmeye devam et.';
+      $('goals').innerHTML = '';
+      return;
+    }
+    const done = goals.filter(goalMet).length;
+    $('careerTitle').textContent = `${state.stars + 1}. yıldız için görevler (${done}/${goals.length})`;
+    $('goals').innerHTML = goals.map(g => {
+      const met = goalMet(g);
+      const pct = Math.min(100, g.cur(state) / g.target * 100);
+      return `<li class="goal ${met ? 'done' : ''}">
+        <span>${met ? '✅' : '⬜'}</span><span>${g.label}</span><span class="val">${goalValue(g)}</span>
+        <div class="mini"><div style="width:${pct}%"></div></div>
+      </li>`;
+    }).join('');
+  }
+
+  // Award every star whose goals are all met. Several at once (old saves) → one modal for the highest.
+  function checkStars() {
+    const from = state.stars;
+    while (state.stars < 5 && STAR_GOALS[state.stars].every(goalMet)) state.stars++;
+    if (state.stars === from) return;
+    save();
+    const n = state.stars;
+    setTimeout(() => sfx('star'), mg.open ? 1200 : 300);   // after the rating jingle if a job just ended
+    if (n === 5 && !state.finalShown) {
+      state.finalShown = true;
+      setTimeout(() => showModal({
+        icon: '⭐⭐⭐⭐⭐',
+        text: "Tebrikler! Ekipmanlarını Koçtaş'tan dizdin, işleri hızlandırdın. Artık Ustabilir uygulamasında 5 Yıldızlı Süper Ustasın!",
+        buttons: [{ label: 'Devam Et 💪' }],
+      }), 300);
+    } else if (n < 5) {
+      setTimeout(() => showModal({
+        icon: '⭐'.repeat(n),
+        title: `${n} Yıldızlı Usta!`,
+        text: `Ustabilir profilin ${n} yıldıza yükseldi. Tüm gelirin kalıcı olarak +%${STAR_BONUS * 100} arttı. Sıradaki yıldızın görevleri seni bekliyor!`,
+        buttons: [{ label: 'Devam Et' }],
+      }), 300);
+    }
+  }
+
+  let activeTab = 'tools';
+  function render() {
+    updateHeader();
+    updateCareer();
+    updateJobCard();
+    updateWorkshopBar();
+    updateShopNav();
+    updateTools();
+    updateTeam();
+    if (activeTab === 'ach') updateAchievements();
+    updateBranch();
+  }
+
+  // ---------- Progress checks ----------
+  function checkProgress() {
+    ACHIEVEMENTS.forEach(a => {
+      if (!state.achievements[a.id] && a.test(state)) {
+        state.achievements[a.id] = true;
+        toast(`🏆 Başarım: ${a.name} (+%${ACH_BONUS * 100} gelir)`);
+        sfx('chime');
+        if (activeTab === 'ach') updateAchievements();
+      }
+    });
+
+    const i = rankIndex();
+    if (i > lastRankIndex) {
+      toast(`🎖️ Yeni rütbe: ${RANKS[i].name}!`);
+      sfx('chime');
+      lastRankIndex = i;
+    }
+
+    checkStars();
+  }
+
+  // ---------- Click & floating text ----------
+  function showFloat(e, text, color) {
+    const area = $('clickArea');
+    const rect = area.getBoundingClientRect();
+    const el = document.createElement('div');
+    el.className = 'float';
+    el.textContent = text;
+    if (color) el.style.color = color;
+    el.style.left = (e.clientX ? e.clientX - rect.left : rect.width / 2) + 'px';
+    el.style.top = ((e.clientY ? e.clientY - rect.top : rect.height / 2) - 20) + 'px';
+    area.appendChild(el);
+    setTimeout(() => el.remove(), 800);
+  }
+
+  $('workBtn').addEventListener('click', e => {
+    const v = clickValue();
+    earn(v);
+    state.clicks++;
+    showFloat(e, '+' + fmt(v));
+    sfx('hammer');
+    checkProgress();
+    render();
+  });
+
+  // ---------- Job orders ----------
+  // Phases: wait → offer → playing (mini game open) → wait.
+  // Difficulty (0 easy … 1 hard) rises with stars plus some variety.
+  const HELP_TIME = 1.25;
+  const diffLabel = d => d < 0.35 ? 'Kolay' : d < 0.7 ? 'Orta' : 'Zor';
+
+  function makeOrder() {
+    const type = pick(JOB_TYPES.filter(t => (t.minStars || 0) <= state.stars));
+    const difficulty = Math.min(1, state.stars / 5 * 0.8 + rand(0, 0.25));
+    const helped = (state.team[type.tier] || 0) > 0;
+    const secs = Math.round(MINIGAMES[type.game].secs(difficulty) * (helped ? HELP_TIME : 1));
+    // Maximum payout; the actual pay scales with performance.
+    const reward = Math.round(secs * (clickValue() * 1.2 + (perSec() + autoPerSec(false)) * 0.5));
+    return { type, customer: pick(CUSTOMERS), ask: pick(ASKS), difficulty, secs, reward, helped };
+  }
+
+  function tickJobs(now) {
+    if (job.phase === 'wait' && now >= job.until) {
+      job = { phase: 'offer', until: now + 30000, order: makeOrder() };
+      sfx('ping');
+    } else if (job.phase === 'offer' && now > job.until) {
+      job = { phase: 'wait', until: now + rand(5, 10) * 1000, order: null };
+    }
+  }
+
+  // Performance 0..1 → customer stars. A sloppy run genuinely earns fewer stars.
+  const ratingFor = score => score >= 0.9 ? 5 : score >= 0.75 ? 4 : score >= 0.55 ? 3 : score >= 0.35 ? 2 : 1;
+
+  function completeJob(score) {
+    const o = job.order, rating = ratingFor(score);
+    const paid = Math.round(o.reward * (0.3 + 0.7 * score));
+    earn(paid);
+    state.ratings.push(rating);
+    if (state.ratings.length > RATING_WINDOW) state.ratings.shift();
+    state.jobsDone++;
+    if (rating >= 4) state.goodJobs++;
+    if (rating === 5) state.perfectJobs++;
+    job = { phase: 'wait', until: Date.now() + rand(6, 12) * 1000, order: null };
+    checkProgress();
+    return { rating, paid, review: pick(REVIEWS[rating]), customer: o.customer };
+  }
+
+  $('jobAccept').addEventListener('click', () => {
+    if (job.phase !== 'offer') return;
+    job.phase = 'playing';
+    openMinigame(job.order, completeJob);
+    render();
+  });
+  $('jobReject').addEventListener('click', () => {
+    if (job.phase !== 'offer') return;
+    job = { phase: 'wait', until: Date.now() + rand(8, 15) * 1000, order: null };
+    render();
+  });
+
+  // ---------- Customer avatars ----------
+  // Inline SVG faces: the look comes from the customer, the expression from the mood.
+  // curious = waiting on an offer (raised brow, "?" bubble); after a job the mood follows the rating.
+  const MOOD_BY_RATING = { 5: 'ecstatic', 4: 'happy', 3: 'neutral', 2: 'sad', 1: 'angry' };
+  const MOOD_BG = { curious: '#fff3e0', ecstatic: '#e8f5e9', happy: '#f1f8e9', neutral: '#eceff1', sad: '#e3f2fd', angry: '#ffebee' };
+
+  function avatarSvg(c, mood) {
+    const h = c.hair, ink = '#3e2723';
+    const backHair = {
+      long: `<path d="M24 46 Q21 88 34 90 L66 90 Q79 88 76 46 Z" fill="${h}"/>`,
+      bob:  `<path d="M24 46 Q23 72 32 74 L68 74 Q77 72 76 46 Z" fill="${h}"/>`,
+    }[c.style] || '';
+    const frontHair = {
+      long:  `<path d="M26 46 Q27 21 50 21 Q73 21 74 46 Q64 31 50 31 Q36 31 26 46 Z" fill="${h}"/>`,
+      bob:   `<path d="M25 49 Q25 20 50 20 Q75 20 75 49 Q70 33 56 31 Q40 29 25 49 Z" fill="${h}"/>`,
+      bun:   `<circle cx="50" cy="18" r="9" fill="${h}"/><path d="M27 44 Q28 22 50 22 Q72 22 73 44 Q62 30 50 30 Q38 30 27 44 Z" fill="${h}"/>`,
+      short: `<path d="M27 42 Q27 21 50 21 Q73 21 73 42 Q66 30 50 30 Q34 30 27 42 Z" fill="${h}"/>`,
+      curly: [30, 40, 50, 60, 70].map((x, i) => `<circle cx="${x}" cy="${i % 2 ? 24 : 28}" r="8.5" fill="${h}"/>`).join(''),
+      bald:  `<path d="M26 52 Q25 40 30 37 L31 52 Z M74 52 Q75 40 70 37 L69 52 Z" fill="${h}"/>`,
+    }[c.style];
+
+    const pupil = { curious: [1.8, -1.8], sad: [0, 1.5] }[mood] || [0, 0];
+    const eyes = mood === 'ecstatic'
+      ? `<path d="M36 49 Q41 43 46 49 M54 49 Q59 43 64 49" stroke="${ink}" stroke-width="3" fill="none" stroke-linecap="round"/>`
+      : `<g class="eyes"><ellipse cx="41" cy="48" rx="5" ry="5.5" fill="#fff"/><ellipse cx="59" cy="48" rx="5" ry="5.5" fill="#fff"/>
+         <circle cx="${41 + pupil[0]}" cy="${48 + pupil[1]}" r="2.8" fill="${ink}"/><circle cx="${59 + pupil[0]}" cy="${48 + pupil[1]}" r="2.8" fill="${ink}"/></g>`;
+    const brows = {
+      curious:  'M35 40 L46 40 M54 36 Q60 32 66 37',
+      ecstatic: 'M35 39 Q40 35 46 39 M54 39 Q60 35 65 39',
+      happy:    'M35 40 Q40 37 46 40 M54 40 Q60 37 65 40',
+      neutral:  'M35 40 L46 40 M54 40 L65 40',
+      sad:      'M35 41 L46 37 M54 37 L65 41',
+      angry:    'M35 37 L46 42 M54 42 L65 37',
+    }[mood];
+    const mouth = {
+      curious:  `<ellipse cx="52" cy="62" rx="3" ry="3.6" fill="${ink}"/>`,
+      ecstatic: `<path d="M39 58 Q50 74 61 58 Z" fill="${ink}"/><ellipse cx="50" cy="66" rx="5" ry="2.5" fill="#ef9a9a"/>`,
+      happy:    `<path d="M41 59 Q50 68 59 59" stroke="${ink}" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+      neutral:  `<path d="M43 62 L57 62" stroke="${ink}" stroke-width="3" stroke-linecap="round"/>`,
+      sad:      `<path d="M41 66 Q50 58 59 66" stroke="${ink}" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+      angry:    `<path d="M42 66 Q50 59 58 66" stroke="${ink}" stroke-width="3.5" fill="none" stroke-linecap="round"/>`,
+    }[mood];
+    const cheeks = mood === 'ecstatic' || mood === 'happy'
+      ? '<ellipse cx="34" cy="57" rx="5" ry="3" fill="#f48fb1" opacity=".55"/><ellipse cx="66" cy="57" rx="5" ry="3" fill="#f48fb1" opacity=".55"/>'
+      : mood === 'angry' ? '<ellipse cx="34" cy="57" rx="6" ry="3.5" fill="#e57373" opacity=".6"/><ellipse cx="66" cy="57" rx="6" ry="3.5" fill="#e57373" opacity=".6"/>' : '';
+    const extra = {
+      curious:  '<g class="q"><circle cx="82" cy="20" r="12" fill="#fff" stroke="#f37021" stroke-width="2.5"/><text x="82" y="26.5" font-size="18" font-weight="900" text-anchor="middle" fill="#f37021">?</text></g>',
+      ecstatic: '<text x="83" y="24" font-size="16" text-anchor="middle">✨</text><text x="17" y="30" font-size="12" text-anchor="middle">✨</text>',
+      sad:      '<path class="tear" d="M37 55 Q34 61 37 63 Q40 61 37 55 Z" fill="#64b5f6"/>',
+      angry:    '<text x="82" y="25" font-size="16" text-anchor="middle">💢</text>',
+    }[mood] || '';
+    const glasses = c.glasses
+      ? `<g stroke="#37474f" stroke-width="2" fill="none"><circle cx="41" cy="48" r="7.5"/><circle cx="59" cy="48" r="7.5"/><path d="M48.5 48 L51.5 48"/></g>` : '';
+    const mustache = c.mustache ? `<path d="M40 57 Q45 52 50 55 Q55 52 60 57 Q55 59 50 57 Q45 59 40 57 Z" fill="${h}"/>` : '';
+    const beard = c.beard ? `<path d="M27 52 Q29 78 50 80 Q71 78 73 52 Q67 71 50 71 Q33 71 27 52 Z" fill="${h}"/>` : '';
+
+    return `<svg viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="50" fill="${MOOD_BG[mood]}"/>
+      <path d="M16 100 Q18 78 50 76 Q82 78 84 100 Z" fill="${c.shirt}"/>
+      <rect x="43" y="66" width="14" height="12" fill="${c.skin}"/>
+      ${backHair}
+      <g class="face">
+        <circle cx="25" cy="50" r="5" fill="${c.skin}"/><circle cx="75" cy="50" r="5" fill="${c.skin}"/>
+        <circle cx="50" cy="48" r="24" fill="${c.skin}"/>
+        ${beard}${frontHair}
+        <path d="${brows}" stroke="${ink}" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+        ${eyes}${glasses}${cheeks}${mustache}${mouth}
+      </g>
+      ${extra}
+    </svg>`;
+  }
+
+  // Redraw only when customer or mood changes, so the CSS animations don't restart every tick.
+  function setAvatar(el, customer, mood) {
+    const key = customer ? customer.name + ':' + mood : '';
+    if (el.dataset.key === key) return;
+    el.dataset.key = key;
+    el.className = el.className.replace(/\s*mood-\w+/g, '') + (customer ? ' mood-' + mood : '');
+    el.innerHTML = customer ? avatarSvg(customer, mood) : '<div class="avatar-empty">📱</div>';
+  }
+
+  function updateJobCard() {
+    const card = $('jobCard'), o = job.order, now = Date.now();
+    card.classList.toggle('offer', job.phase === 'offer');
+    card.classList.toggle('active', job.phase === 'playing');
+    $('jobRating').textContent = state.ratings.length
+      ? `Puanın: ${ratingAvg().toLocaleString('tr-TR', { maximumFractionDigits: 1 })} ★ (${state.ratings.length} yorum)`
+      : 'Henüz yorum yok';
+    $('jobActions').style.display = job.phase === 'offer' ? '' : 'none';
+    setAvatar($('jobAvatar'), o && o.customer, 'curious');
+
+    if (job.phase === 'wait') {
+      $('jobTitle').textContent = '⏳ Yeni iş talebi bekleniyor…';
+      $('jobDesc').textContent = 'Müşteri talepleri burada görünecek. İşi iyi yap, 5★ yorum al!';
+      return;
+    }
+    const game = MINIGAMES[o.type.game];
+    const tierName = TEAM.find(t => t.id === o.type.tier).name;
+    $('jobTitle').textContent = `${o.type.emoji} ${o.customer.name} — ${o.type.name}`;
+    if (job.phase === 'offer') {
+      $('jobDesc').textContent = `${game.icon} ${game.title} · ${diffLabel(o.difficulty)} · ${o.secs} sn · En fazla ${fmt(o.reward)}`
+        + (o.helped ? ` · ${tierName} ekibin yardımda (+%25 süre)` : '')
+        + ` · Teklif ${Math.ceil((job.until - now) / 1000)} sn geçerli`;
+    } else {
+      $('jobDesc').textContent = '🎮 İş başında…';
+    }
+  }
+
+  // ---------- Random "acil çağrı" events ----------
+  const nextEventDelay = () => rand(45, 90) * 1000 * eventIntervalMult();
+
+  function spawnEvent() {
+    const btn = $('eventBtn');
+    btn.style.left = rand(5, 65) + '%';
+    btn.style.top = rand(5, 75) + '%';
+    btn.classList.add('show');
+    eventExpiresAt = Date.now() + 12000;
+    sfx('alert');
+  }
+
+  $('eventBtn').addEventListener('click', e => {
+    $('eventBtn').classList.remove('show');
+    nextEventAt = Date.now() + nextEventDelay();
+    state.events++;
+    sfx('levelUp');
+    const now = Date.now();
+    const hasTeam = perSec(false) > 0;
+    const r = Math.random();
+    const reward = eventRewardMult();   // the radio scales cash rewards and boost durations
+    if (r < 0.4 || (!hasTeam && r < 0.7)) {
+      const gain = Math.max(perSec() * 90, clickValue() * 40, 500) * reward;
+      earn(gain);
+      showFloat(e, '+' + fmt(gain), '#e53935');
+      toast(`🚨 Acil tesisat arızası çözüldü! +${fmt(gain)}`);
+    } else if (hasTeam && r < 0.75) {
+      const sec = Math.round(30 * reward);
+      boosts.prod = { mult: 5, until: now + sec * 1000 };
+      toast(`📈 Yoğun sezon! ${sec} sn boyunca ekip geliri ×5`);
+    } else {
+      const sec = Math.round(15 * reward);
+      boosts.click = { mult: 10, until: now + sec * 1000 };
+      toast(`⚡ Usta eli! ${sec} sn boyunca tıklama ×10`);
+    }
+    checkProgress();
+    render();
+  });
+
+  // ---------- Purchases ----------
+  $('toolList').addEventListener('click', e => {
+    const btn = e.target.closest('.item');
+    if (!btn || btn.disabled) return;
+    const t = TOOLS.find(x => x.id === btn.dataset.id);
+    const L = toolLevel(t.id);
+    const cost = upgradeCost(t);
+    if (L >= toolMax(t) || state.money < cost || toolLockReason(t)) return;
+    state.money -= cost;
+    state.tools[t.id] = L + 1;
+    state.upgrades++;
+    sparkleTool(t);
+    sfx(MILESTONES.includes(L + 1) ? 'levelUp' : 'coin');
+    if (L === 0) toast(`🛠️ ${t.name} alındı! Atölyene yerleştirildi.`);
+    else if (MILESTONES.includes(L + 1)) toast(`🏅 ${t.name} Sv. ${L + 1}! Etkisi ×2 oldu.`);
+    checkProgress();
+    render();
+  });
+
+  $('teamList').addEventListener('click', e => {
+    const btn = e.target.closest('.item');
+    if (!btn || btn.disabled) return;
+    const t = TEAM.find(x => x.id === btn.dataset.id);
+    const qty = Math.min(buyQty, freeCapacity());
+    if (qty <= 0) return;
+    const cost = teamCost(t, qty);
+    if (state.money < cost) return;
+    state.money -= cost;
+    state.team[t.id] = (state.team[t.id] || 0) + qty;
+    sfx('coin');
+    if (freeCapacity() <= 0) toast('⚠️ Atölye doldu! Daha fazla ekip için yeni bölüm ekle.');
+    checkProgress();
+    render();
+  });
+
+  $('qty').addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    buyQty = Number(b.dataset.q);
+    document.querySelectorAll('#qty button').forEach(x => x.classList.toggle('active', x === b));
+    render();
+  });
+
+  // ---------- Tabs ----------
+  function switchTab(name) {
+    activeTab = name;
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+    document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + name));
+    render();
+  }
+  document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
+
+  // ---------- Prestige & reset ----------
+  $('prestigeBtn').addEventListener('click', () => {
+    const p = potentialRozet();
+    if (p < 1) return;
+    showModal({
+      icon: '🏅',
+      title: 'Yeni Şube Aç',
+      text: `Kasandaki para, ekipmanların, ekibin ve atölye bölümlerin sıfırlanacak. Karşılığında ${p} Ustabilir Rozeti kazanacaksın ve tüm gelirin kalıcı olarak +%${Math.round(p * ROZET_BONUS * 100)} artacak.`,
+      buttons: [
+        { label: 'Vazgeç', cls: 'secondary' },
+        { label: 'Şubeyi Aç', onClick: () => {
+          state.rozet += p;
+          state.prestiges++;
+          sfx('star');
+          state.money = 0;
+          state.runEarned = 0;
+          state.tools = {};
+          state.team = {};
+          state.sections = 1;
+          boosts = { click: null, prod: null };
+          toast(`🏅 Yeni şube açıldı! Artık ${state.rozet} rozetin var.`);
+          checkProgress();
+          save();
+          switchTab('tools');
+        } },
+      ],
+    });
+  });
+
+  $('resetBtn').addEventListener('click', () => {
+    showModal({
+      icon: '⚠️',
+      title: 'Emin misin?',
+      text: 'Tüm ilerlemen, yıldızların, rozetlerin ve başarımların kalıcı olarak silinecek.',
+      buttons: [
+        { label: 'Vazgeç', cls: 'secondary' },
+        { label: 'Her Şeyi Sil', cls: 'danger', onClick: () => {
+          try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* ignore */ }
+          state = newState();
+          boosts = { click: null, prod: null };
+          lastRankIndex = 0;
+          job = { phase: 'wait', until: Date.now() + 8000, order: null };
+          buildAchievementsReset();
+          switchTab('tools');
+        } },
+      ],
+    });
+  });
+
+  function buildAchievementsReset() {
+    ACHIEVEMENTS.forEach(a => {
+      achEls[a.id].classList.remove('done');
+      achEls[a.id].children[0].textContent = '🔒 ' + a.name;
+    });
+  }
+
+  // ---------- Automation: hammers that hit the button for you ----------
+  const auto = { acc: 0, floatSum: 0, lastFloat: 0, lastSwing: 0, nextHammer: 0, lastCrit: 0 };
+
+  // One hammer, plus one more per milestone reached (Sv. 10 and 25).
+  function updateHammers() {
+    const L = toolLevel('otoCekic');
+    const want = L ? 1 + MILESTONES.filter(m => L >= m).length : 0;
+    const box = $('hammers');
+    while (box.children.length < want) {
+      const h = document.createElement('span');
+      h.className = 'hammer';
+      h.textContent = '🔨';
+      box.appendChild(h);
+    }
+    while (box.children.length > want) box.lastChild.remove();
+  }
+
+  function floatNearButton(text, color) {
+    const r = $('workBtn').getBoundingClientRect();
+    showFloat({ clientX: r.left + r.width * rand(0.25, 0.75), clientY: r.top + r.height * rand(0.2, 0.5) }, text, color);
+  }
+
+  function runAutomation(dt, now) {
+    const rate = hitsPerSec();
+    if (!rate) return;
+    auto.acc += rate * dt;
+    const hits = Math.floor(auto.acc);
+    if (!hits) return;
+    auto.acc -= hits;
+
+    const value = autoHitValue(), crit = critChance();
+    let total = 0, crits = 0;
+    for (let i = 0; i < hits; i++) {
+      if (Math.random() < crit) { crits++; total += value * CRIT_MULT; } else total += value;
+    }
+    earn(total);
+    state.autoHits += hits;
+
+    // Visuals are throttled: at 50 hits/sec we can't animate or float every single hit.
+    if (now - auto.lastSwing > 140) {
+      auto.lastSwing = now;
+      const hammers = $('hammers').children;
+      if (hammers.length) {
+        const h = hammers[auto.nextHammer++ % hammers.length];
+        h.classList.remove('hit');
+        void h.offsetWidth;   // restart the CSS animation
+        h.classList.add('hit');
+      }
+      sfx('autoHit');   // quiet and throttled with the swing, never once per hit
+      const b = $('workBtn');
+      b.classList.add('auto-press');
+      setTimeout(() => b.classList.remove('auto-press'), 80);
+    }
+    if (crits && now - auto.lastCrit > 400) {
+      auto.lastCrit = now;
+      floatNearButton(`💥 KRİTİK +${fmt(value * CRIT_MULT * crits)}`, '#f5b700');
+      total -= value * CRIT_MULT * crits;   // already shown
+    }
+    auto.floatSum += total;
+    if (now - auto.lastFloat > 600) {
+      auto.lastFloat = now;
+      floatNearButton(`+${fmt(auto.floatSum)} 🤖`, '#6d4c41');
+      auto.floatSum = 0;
+    }
+  }
+
+  // ---------- Mini games ----------
+  // Every job opens one of these over the whole game. A mini game is a self-contained plugin:
+  //   title, icon, howto  — shown on the intro screen
+  //   secs(d)             — time limit for difficulty d (0 easy … 1 hard)
+  //   create(ctx)         — builds itself into ctx.stage; may call ctx.finish(score) when done early;
+  //                         returns { timeUp() → score, destroy() }
+  // ctx: { stage, difficulty, theme, timeLeftFrac(), finish(score 0..1) }
+  // To add or swap a game, add an entry here and point JOB_TYPES[].game at its key.
+  function shuffle(a) {
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  // --- Pipe puzzle helpers (pure, so they can be tested without a page) ---
+  // Pieces are bitmasks of open sides: N=1, E=2, S=4, W=8.
+  const PIPE_DIRS = [{ bit: 1, dr: -1, dc: 0 }, { bit: 2, dr: 0, dc: 1 }, { bit: 4, dr: 1, dc: 0 }, { bit: 8, dr: 0, dc: -1 }];
+  const PIPE_PIECES = [5, 10, 3, 6, 12, 9];   // straights and elbows
+  const oppositeBit = b => (b === 1 ? 4 : b === 2 ? 8 : b === 4 ? 1 : 2);
+  const rotateMask = m => ((m << 1) | (m >> 3)) & 15;
+  const bitToward = (r, c, [r2, c2]) => (r2 < r ? 1 : c2 > c ? 2 : r2 > r ? 4 : 8);
+
+  // Random self-avoiding path from the west edge (row r0) to the east edge (row r1),
+  // laid with the right pieces, every cell then randomly rotated.
+  function makePipePuzzle(n) {
+    const r0 = Math.floor(Math.random() * n), r1 = Math.floor(Math.random() * n);
+    const seen = new Set(), path = [];
+    (function dfs(r, c) {
+      seen.add(r * n + c);
+      path.push([r, c]);
+      if (r === r1 && c === n - 1) return true;
+      const dirs = shuffle(PIPE_DIRS.slice());
+      if (Math.random() < 0.5) dirs.sort((a, b) => (b.bit === 2) - (a.bit === 2));   // lean eastward half the time
+      for (const d of dirs) {
+        const nr = r + d.dr, nc = c + d.dc;
+        if (nr < 0 || nc < 0 || nr >= n || nc >= n || seen.has(nr * n + nc)) continue;
+        if (dfs(nr, nc)) return true;
+      }
+      path.pop();
+      return false;
+    })(r0, 0);
+
+    const grid = Array.from({ length: n }, () => Array.from({ length: n }, () => pick(PIPE_PIECES)));
+    path.forEach(([r, c], k) => {
+      const prev = k ? path[k - 1] : [r, -1];                      // water enters from the west edge
+      const next = k < path.length - 1 ? path[k + 1] : [r, n];     // and leaves through the east edge
+      grid[r][c] = bitToward(r, c, prev) | bitToward(r, c, next);
+    });
+    const solution = grid.map(row => row.slice());
+    grid.forEach(row => row.forEach((m, c) => { for (let k = Math.floor(Math.random() * 4); k > 0; k--) row[c] = rotateMask(row[c]); }));
+    while (pipeFlow(grid, n, r0, r1).solved) {   // never hand out a solved board
+      const [r, c] = pick(path);
+      grid[r][c] = rotateMask(grid[r][c]);
+    }
+    return { grid, solution, path, r0, r1 };
+  }
+
+  function pipeFlow(grid, n, r0, r1) {
+    const wet = new Set();
+    if (grid[r0][0] & 8) {
+      wet.add(r0 * n);
+      const stack = [[r0, 0]];
+      while (stack.length) {
+        const [r, c] = stack.pop();
+        for (const d of PIPE_DIRS) {
+          if (!(grid[r][c] & d.bit)) continue;
+          const nr = r + d.dr, nc = c + d.dc;
+          if (nr < 0 || nc < 0 || nr >= n || nc >= n) continue;
+          if (!(grid[nr][nc] & oppositeBit(d.bit)) || wet.has(nr * n + nc)) continue;
+          wet.add(nr * n + nc);
+          stack.push([nr, nc]);
+        }
+      }
+    }
+    return { wet, solved: wet.has(r1 * n + n - 1) && !!(grid[r1][n - 1] & 2) };
+  }
+
+  function pipeSvg(mask, color) {
+    const ends = { 1: [50, 0], 2: [100, 50], 4: [50, 100], 8: [0, 50] };
+    const lines = [1, 2, 4, 8].filter(b => mask & b)
+      .map(b => `<line x1="50" y1="50" x2="${ends[b][0]}" y2="${ends[b][1]}"/>`).join('');
+    return `<svg viewBox="0 0 100 100"><g stroke="${color}" stroke-width="26" stroke-linecap="round">${lines}</g>`
+      + `<circle cx="50" cy="50" r="13" fill="${color}"/></svg>`;
+  }
+
+  const PIPE_THEMES = {
+    water:    { src: '🚰', dst: '🚿', color: '#29b6f6', done: 'Su akıyor! 💧' },
+    electric: { src: '⚡', dst: '💡', color: '#fbc02d', done: 'Işıklar yandı! 💡' },
+  };
+
+  const PLACE_SETS = {
+    salon: {
+      items: [['🛋️', 'Koltuk'], ['📺', 'Televizyon'], ['🪴', 'Bitki'], ['🖼️', 'Tablo'], ['💡', 'Lambader'], ['📚', 'Kitaplık']],
+      places: ['Pencere önü', 'Sol duvar', 'Sağ duvar', 'Köşe', 'Oda ortası', 'Kapı yanı'],
+    },
+    ev: {   // fixed: each item has one sensible room
+      fixed: true,
+      items: [['🛏️', 'Yatak'], ['🚿', 'Duşakabin'], ['🍳', 'Ocak'], ['🛋️', 'Koltuk'], ['🪑', 'Yemek masası'], ['🧺', 'Çamaşır makinesi']],
+      places: ['Yatak odası', 'Banyo', 'Mutfak', 'Salon', 'Yemek alanı', 'Çamaşırlık'],
+    },
+    site: {
+      items: [['🏢', 'Konut bloğu'], ['🌳', 'Park'], ['🅿️', 'Otopark'], ['🏫', 'Okul'], ['🏪', 'Market'], ['🏊', 'Havuz']],
+      places: ['Kuzey parsel', 'Güney parsel', 'Doğu parsel', 'Batı parsel', 'Merkez', 'Giriş'],
+    },
+  };
+
+  const MINIGAMES = {
+    nail: {
+      title: 'Çivi Çakma', icon: '🔨',
+      howto: 'Gösterge yeşil alandan geçerken VUR! Koyu yeşil tam isabettir, çiviyi tek seferde gömer. Iskalarsan çivi eğilir.',
+      secs: d => Math.round((6 + Math.round(2 * d)) * 2.6),
+      create(ctx) {
+        const d = ctx.difficulty, N = 6 + Math.round(2 * d);
+        const speed = 0.9 + 0.9 * d;                 // bar widths per second
+        const goodW = 0.30 - 0.10 * d, perfW = 0.10 - 0.04 * d;
+        ctx.stage.innerHTML = `
+          <div class="nail-board">${'<div class="nail"><div class="nhead"></div><div class="nshaft"></div></div>'.repeat(N)}</div>
+          <div class="nail-meter"><div class="zone good"></div><div class="zone perfect"></div><div class="marker"></div></div>
+          <div class="mg-feedback">Boşluk tuşu da çalışır</div>
+          <button class="btn mg-big nail-hit">🔨 VUR!</button>`;
+        const q = s => ctx.stage.querySelector(s);
+        const nails = ctx.stage.querySelectorAll('.nail');
+        const good = q('.zone.good'), perf = q('.zone.perfect'), marker = q('.marker'), fb = q('.mg-feedback');
+        let i = 0, p = 0, dir = 1, center = 0.5, total = 0, raf = 0, last = performance.now();
+
+        function placeZone() {
+          center = rand(0.15 + goodW / 2, 0.85 - goodW / 2);
+          good.style.left = (center - goodW / 2) * 100 + '%';
+          good.style.width = goodW * 100 + '%';
+          perf.style.left = (center - perfW / 2) * 100 + '%';
+          perf.style.width = perfW * 100 + '%';
+          nails.forEach((el, k) => el.classList.toggle('current', k === i));
+        }
+        function frame(t) {
+          p += dir * speed * Math.min(0.05, (t - last) / 1000);
+          last = t;
+          if (p > 1) { p = 2 - p; dir = -1; }
+          if (p < 0) { p = -p; dir = 1; }
+          marker.style.left = p * 100 + '%';
+          raf = requestAnimationFrame(frame);
+        }
+        function hit() {
+          if (i >= N) return;
+          const off = Math.abs(p - center);
+          const grade = off <= perfW / 2 ? 1 : off <= goodW / 2 ? 0.6 : 0;
+          total += grade;
+          sfx(grade === 1 ? 'perfect' : grade ? 'good' : 'miss');
+          nails[i].classList.remove('current');
+          nails[i].classList.add(grade === 1 ? 'perfect' : grade ? 'good' : 'bent');
+          fb.textContent = grade === 1 ? 'Tam isabet! 💥' : grade ? 'İyi 👍' : 'Eğildi! 😬';
+          fb.className = 'mg-feedback ' + (grade === 1 ? 'ok' : grade ? 'mid' : 'bad');
+          i++;
+          if (i >= N) setTimeout(() => ctx.finish(total / N), 500);
+          else placeZone();
+        }
+        const onKey = e => { if (e.code === 'Space') { e.preventDefault(); hit(); } };
+        q('.mg-big').addEventListener('pointerdown', e => { e.preventDefault(); hit(); });
+        document.addEventListener('keydown', onKey);
+        placeZone();
+        raf = requestAnimationFrame(frame);
+        return {
+          timeUp: () => total / N,   // nails never struck count as misses
+          destroy() { cancelAnimationFrame(raf); document.removeEventListener('keydown', onKey); },
+        };
+      },
+    },
+
+    pipe: {
+      title: 'Boru Hattı', icon: '🔧',
+      howto: 'Parçalara dokunarak döndür. Kaynaktan çıkışa kesintisiz bir hat kur. Ne kadar hızlı bitirirsen o kadar iyi!',
+      secs: d => (d > 0.5 ? 45 : 35),
+      create(ctx) {
+        const n = ctx.difficulty > 0.5 ? 5 : 4;
+        const theme = PIPE_THEMES[ctx.theme] || PIPE_THEMES.water;
+        const { grid, path, r0, r1 } = makePipePuzzle(n);
+        let done = false;
+        ctx.stage.innerHTML = `
+          <div class="pipe-wrap">
+            <div class="pipe-end pipe-src" style="top:${(r0 + 0.5) / n * 100}%">${theme.src}</div>
+            <div class="pipe-grid" style="grid-template-columns:repeat(${n},1fr)"></div>
+            <div class="pipe-end pipe-dst" style="top:${(r1 + 0.5) / n * 100}%">${theme.dst}</div>
+          </div>
+          <div class="mg-feedback">Dokun ve döndür</div>`;
+        const box = ctx.stage.querySelector('.pipe-grid'), fb = ctx.stage.querySelector('.mg-feedback');
+        const cells = [];
+        for (let r = 0; r < n; r++) {
+          for (let c = 0; c < n; c++) {
+            const b = document.createElement('button');
+            b.className = 'pipe-cell';
+            b.addEventListener('click', () => {
+              if (done) return;
+              grid[r][c] = rotateMask(grid[r][c]);
+              sfx('rotate');
+              draw();
+            });
+            box.appendChild(b);
+            cells.push(b);
+          }
+        }
+        function draw() {
+          const { wet, solved } = pipeFlow(grid, n, r0, r1);
+          cells.forEach((b, k) => {
+            const r = Math.floor(k / n), c = k % n;
+            b.innerHTML = pipeSvg(grid[r][c], wet.has(k) ? theme.color : '#b0bec5');
+          });
+          if (solved && !done) {
+            done = true;
+            ctx.stage.querySelector('.pipe-wrap').classList.add('solved');
+            fb.textContent = theme.done;
+            fb.className = 'mg-feedback ok';
+            sfx(ctx.theme === 'electric' ? 'spark' : 'flow');
+            // Solved: 70% for the working line, the rest for speed (half the time left = full marks).
+            const score = 0.7 + 0.3 * Math.min(1, ctx.timeLeftFrac() / 0.5);
+            setTimeout(() => ctx.finish(score), 600);
+          }
+        }
+        draw();
+        return {
+          // Unfinished: up to half marks for how much of the route already carries flow.
+          timeUp() {
+            const { wet } = pipeFlow(grid, n, r0, r1);
+            return 0.5 * path.filter(([r, c]) => wet.has(r * n + c)).length / path.length;
+          },
+          destroy() {},
+        };
+      },
+    },
+
+    place: {
+      title: 'Yerleştirme', icon: '📦',
+      howto: 'Müşterinin isteğini oku. Önce bir eşyaya, sonra doğru yere dokun. Yanlış yer puanını düşürür!',
+      secs: d => (4 + Math.round(2 * d)) * 6,
+      create(ctx) {
+        const set = PLACE_SETS[ctx.theme] || PLACE_SETS.salon;
+        const N = 4 + Math.round(2 * ctx.difficulty);
+        const picked = shuffle([...set.items.keys()]).slice(0, N);
+        const items = picked.map(k => set.items[k]);
+        const targets = set.fixed ? picked.map(k => set.places[k]) : shuffle(set.places.slice()).slice(0, N);
+        const decoys = shuffle(set.places.filter(p => !targets.includes(p))).slice(0, ctx.difficulty > 0.3 ? 1 : 0);
+        const slots = shuffle([...targets, ...decoys]);
+        let selected = null, placed = 0, mistakes = 0;
+
+        ctx.stage.innerHTML = `
+          <div class="wish"><b>📝 Müşterinin isteği</b>${items.map(() => '<div class="wish-row"></div>').join('')}</div>
+          <div class="room">${slots.map(() => '<button class="slot"><span class="slot-item"></span><span class="slot-label"></span></button>').join('')}</div>
+          <div class="tray">${items.map(() => '<button class="tray-item"></button>').join('')}</div>
+          <div class="mg-feedback">Önce bir eşya seç</div>`;
+        const rows = ctx.stage.querySelectorAll('.wish-row');
+        const slotEls = ctx.stage.querySelectorAll('.slot');
+        const trayEls = ctx.stage.querySelectorAll('.tray-item');
+        const fb = ctx.stage.querySelector('.mg-feedback');
+        items.forEach(([emoji, name], k) => {
+          rows[k].textContent = `${emoji} ${name} → ${targets[k]}`;
+          trayEls[k].innerHTML = `${emoji}<small></small>`;
+          trayEls[k].querySelector('small').textContent = name;
+          trayEls[k].addEventListener('click', () => {
+            selected = k;
+            trayEls.forEach((t, j) => t.classList.toggle('sel', j === k));
+            fb.textContent = `${name} nereye?`;
+            fb.className = 'mg-feedback';
+          });
+        });
+        const score = () => {
+          const accuracy = Math.max(0, 1 - 0.2 * mistakes);
+          return { accuracy, full: accuracy * (0.8 + 0.2 * Math.min(1, ctx.timeLeftFrac() / 0.4)) };
+        };
+        slots.forEach((place, s) => {
+          const el = slotEls[s];
+          el.querySelector('.slot-label').textContent = place;
+          el.addEventListener('click', () => {
+            if (selected === null || el.classList.contains('filled')) return;
+            if (targets[selected] === place) {
+              el.classList.add('filled');
+              el.querySelector('.slot-item').textContent = items[selected][0];
+              trayEls[selected].classList.add('used');
+              rows[selected].classList.add('done');
+              fb.textContent = 'Doğru! 👍';
+              fb.className = 'mg-feedback ok';
+              sfx('pop');
+              selected = null;
+              trayEls.forEach(t => t.classList.remove('sel'));
+              if (++placed === N) setTimeout(() => ctx.finish(score().full), 500);
+            } else {
+              mistakes++;
+              el.classList.remove('wrong');
+              void el.offsetWidth;   // restart the shake
+              el.classList.add('wrong');
+              fb.textContent = 'Müşteri orayı istemedi! 😬';
+              fb.className = 'mg-feedback bad';
+              sfx('wrong');
+            }
+          });
+        });
+        return {
+          timeUp: () => placed / N * 0.6 * score().accuracy,
+          destroy() {},
+        };
+      },
+    },
+  };
+
+  // --- Runner: intro → play (timer) → result ---
+  const mg = { open: false, instance: null, raf: 0, ended: false, start: 0 };
+
+  function setMgTimer(frac, secs) {
+    $('mgTimeFill').style.width = frac * 100 + '%';
+    $('mgTimeText').textContent = `⏱️ ${Math.ceil(frac * secs)} sn`;
+  }
+
+  function openMinigame(order, onDone) {
+    const game = MINIGAMES[order.type.game];
+    mg.open = true;
+    $('mgTitle').textContent = `${order.type.emoji} ${order.customer.name} — ${order.type.name}`;
+    $('mgSub').textContent = `${game.icon} ${game.title} · ${diffLabel(order.difficulty)}`;
+    setMgTimer(1, order.secs);
+    const stage = $('mgStage');
+    stage.innerHTML = `<div class="mg-intro"><div class="avatar lg"></div><div class="speech"></div>
+      <p class="mg-howto"><span class="mg-icon"></span> <span></span></p><p class="mg-help"></p><button class="btn mg-big">Başla</button></div>`;
+    setAvatar(stage.querySelector('.avatar'), order.customer, 'curious');
+    stage.querySelector('.speech').textContent = `"${order.ask}"`;
+    stage.querySelector('.mg-icon').textContent = game.icon;
+    stage.querySelector('.mg-howto span:last-child').textContent = game.howto;
+    stage.querySelector('.mg-help').textContent = order.helped
+      ? `${TEAM.find(t => t.id === order.type.tier).name} ekibin yardımda: +%25 süre` : '';
+    stage.querySelector('.mg-big').addEventListener('click', () => beginMinigame(game, order, onDone));
+    $('mg').classList.add('show');
+  }
+
+  function beginMinigame(game, order, onDone) {
+    mg.ended = false;
+    mg.start = performance.now();
+    $('mgStage').innerHTML = '';
+    const ctx = {
+      stage: $('mgStage'),
+      difficulty: order.difficulty,
+      theme: order.type.theme,
+      timeLeftFrac: () => Math.max(0, 1 - (performance.now() - mg.start) / (order.secs * 1000)),
+      finish: score => endMinigame(score, onDone),
+    };
+    mg.instance = game.create(ctx);
+    let lastSec = Infinity;
+    const tick = () => {
+      const left = ctx.timeLeftFrac();
+      setMgTimer(left, order.secs);
+      const sec = Math.ceil(left * order.secs);
+      if (sec < lastSec && sec <= 5 && sec > 0) sfx('tick');   // countdown ticks in the last 5 seconds
+      lastSec = sec;
+      if (left <= 0) return endMinigame(mg.instance.timeUp(), onDone);
+      mg.raf = requestAnimationFrame(tick);
+    };
+    mg.raf = requestAnimationFrame(tick);
+  }
+
+  function endMinigame(score, onDone) {
+    if (mg.ended) return;
+    mg.ended = true;
+    cancelAnimationFrame(mg.raf);
+    mg.instance.destroy();
+    score = Math.max(0, Math.min(1, score));
+    const res = onDone(score);
+    const stage = $('mgStage');
+    stage.innerHTML = `<div class="mg-result"><div class="avatar lg"></div><div class="mg-stars"></div>
+      <div class="speech mg-review"></div><p class="mg-reward"></p><button class="btn mg-big">Tamam</button></div>`;
+    setAvatar(stage.querySelector('.avatar'), res.customer, MOOD_BY_RATING[res.rating]);
+    stage.querySelector('.mg-stars').textContent = '★'.repeat(res.rating) + '☆'.repeat(5 - res.rating);
+    stage.querySelector('.mg-review').textContent = `${res.customer.name}: "${res.review}"`;
+    sfx('rating', res.rating);
+    stage.querySelector('.mg-reward').textContent = `+${fmt(res.paid)} · Performans %${Math.round(score * 100)}`;
+    stage.querySelector('.mg-big').addEventListener('click', () => {
+      $('mg').classList.remove('show');
+      mg.open = false;
+      render();
+    });
+  }
+
+  // ---------- Sound ----------
+  // All sounds are synthesized with the Web Audio API, so the game stays a single file.
+  // Browsers allow audio only after a user gesture: the first tap creates the context
+  // and fades the music in. Effects and music have separate toggles, kept in their
+  // own storage key so they survive a progress reset.
+  const AUDIO_KEY = 'ustaniBuyut.audio';
+  const snd = { ctx: null, sfx: null, music: null, noise: null, lastError: null, prefs: { sfx: true, music: true } };
+  try {
+    const saved = JSON.parse(localStorage.getItem(AUDIO_KEY) || '{}');
+    snd.prefs.sfx = saved.sfx !== false;
+    snd.prefs.music = saved.music !== false;   // the old "amb" (room hum) preference doesn't carry over to music
+  } catch (e) { /* defaults */ }
+
+  function audioCtx() {
+    if (!snd.ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      const ctx = snd.ctx = new AC();
+      const master = ctx.createGain();
+      master.gain.value = 0.8;
+      master.connect(ctx.destination);
+      snd.sfx = ctx.createGain();
+      snd.sfx.connect(master);
+      // Music bus: faded in/out as a whole, with the highs rolled off so it stays in the background.
+      snd.music = ctx.createGain();
+      snd.music.gain.value = 0;
+      const soften = ctx.createBiquadFilter();
+      soften.type = 'lowpass';
+      soften.frequency.value = 2600;
+      snd.music.connect(soften);
+      soften.connect(master);
+      // 2 s of white noise for hits, water and the music's shaker
+      const len = ctx.sampleRate * 2;
+      snd.noise = ctx.createBuffer(1, len, ctx.sampleRate);
+      const w = snd.noise.getChannelData(0);
+      for (let i = 0; i < len; i++) w[i] = Math.random() * 2 - 1;
+    }
+    if (snd.ctx.state === 'suspended' && !document.hidden) snd.ctx.resume();
+    return snd.ctx;
+  }
+
+  function envelope(g, t, vol, dur) {
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  }
+  function tone(freq, dur, { type = 'sine', vol = 0.2, at = 0, to = null, dest = snd.sfx } = {}) {
+    const ctx = snd.ctx, t = ctx.currentTime + at;
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(freq, t);
+    if (to) o.frequency.exponentialRampToValueAtTime(to, t + dur);
+    envelope(g, t, vol, dur);
+    o.connect(g);
+    g.connect(dest);
+    o.start(t);
+    o.stop(t + dur + 0.02);
+  }
+  function noise(dur, { vol = 0.2, at = 0, freq = 1000, q = 1, filter = 'lowpass', to = null, dest = snd.sfx } = {}) {
+    const ctx = snd.ctx, t = ctx.currentTime + at;
+    const src = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+    src.buffer = snd.noise;
+    f.type = filter;
+    f.frequency.setValueAtTime(freq, t);
+    f.Q.value = q;
+    if (to) f.frequency.exponentialRampToValueAtTime(to, t + dur);
+    envelope(g, t, vol, dur);
+    src.connect(f);
+    f.connect(g);
+    g.connect(dest);
+    src.start(t, Math.random() * 1.5);
+    src.stop(t + dur + 0.02);
+  }
+
+  const SFX = {
+    ui:      () => tone(660, 0.05, { type: 'triangle', vol: 0.08 }),
+    hammer:  () => { const p = rand(0.9, 1.1); noise(0.07, { vol: 0.35, freq: 1400 * p }); tone(150 * p, 0.12, { vol: 0.3, to: 70 }); },
+    autoHit: () => { noise(0.05, { vol: 0.06, freq: 1200 }); tone(130, 0.08, { vol: 0.05, to: 70 }); },
+    coin:    () => { tone(988, 0.08, { type: 'triangle', vol: 0.16 }); tone(1319, 0.16, { type: 'triangle', vol: 0.16, at: 0.07 }); },
+    levelUp: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.14, { type: 'triangle', vol: 0.15, at: i * 0.07 })),
+    build:   () => [0, 0.12, 0.24].forEach(at => { noise(0.06, { vol: 0.3, freq: 1300, at }); tone(140, 0.1, { vol: 0.25, to: 70, at }); }),
+    ping:    () => { tone(1046, 0.18, { vol: 0.12 }); tone(1318, 0.3, { vol: 0.12, at: 0.12 }); },
+    alert:   () => [0, 0.18].forEach(at => tone(880, 0.14, { type: 'square', vol: 0.05, at, to: 660 })),
+    perfect: () => { SFX.hammer(); tone(1568, 0.25, { type: 'triangle', vol: 0.14, at: 0.03 }); },
+    good:    () => { SFX.hammer(); tone(988, 0.15, { type: 'triangle', vol: 0.1, at: 0.03 }); },
+    miss:    () => { noise(0.08, { vol: 0.25, freq: 900 }); tone(330, 0.35, { type: 'sawtooth', vol: 0.05, to: 110 }); },
+    rotate:  () => noise(0.04, { vol: 0.12, freq: 2500, filter: 'highpass' }),
+    flow:    () => { noise(0.6, { vol: 0.12, freq: 400, to: 2400, filter: 'bandpass', q: 2 }); tone(1318, 0.3, { type: 'triangle', vol: 0.1, at: 0.35 }); },
+    spark:   () => { noise(0.25, { vol: 0.12, freq: 3000, filter: 'highpass' }); tone(1760, 0.3, { type: 'square', vol: 0.05, at: 0.2 }); },
+    pop:     () => tone(500, 0.09, { vol: 0.2, to: 950 }),
+    wrong:   () => tone(140, 0.2, { type: 'square', vol: 0.07 }),
+    tick:    () => tone(1200, 0.03, { type: 'square', vol: 0.04 }),
+    chime:   () => { tone(1319, 0.2, { type: 'triangle', vol: 0.09 }); tone(1760, 0.3, { type: 'triangle', vol: 0.07, at: 0.08 }); },
+    star:    () => [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, i === 4 ? 0.5 : 0.15, { type: 'triangle', vol: 0.16, at: i * 0.09 })),
+    // Happy ratings climb, unhappy ones slump ("wah-wah")
+    rating:  r => {
+      const seq = r >= 5 ? [659, 784, 988, 1319] : r === 4 ? [659, 784, 988] : r === 3 ? [587, 587] : r === 2 ? [494, 440, 392] : [392, 370, 349, 262];
+      seq.forEach((f, i) => tone(f, 0.18, { type: r >= 3 ? 'triangle' : 'sawtooth', vol: r >= 3 ? 0.15 : 0.06, at: i * 0.13 }));
+    },
+  };
+
+  // Plays only once audio was unlocked by a gesture; sound is best-effort and never breaks the game.
+  function sfx(name, arg) {
+    if (!snd.prefs.sfx || !snd.ctx || document.hidden) return;
+    if (snd.ctx.state === 'suspended') snd.ctx.resume();
+    try { SFX[name](arg); } catch (e) { snd.lastError = e; }
+  }
+
+  // ---------- Background music ----------
+  // A calm, generative lo-fi loop: Cmaj7 – Am7 – Dm7 – G7 at 80 BPM, soft pad and bass,
+  // and a marimba-like melody from the C major pentatonic (no note can clash with the chords).
+  // The melody is re-composed every 8 bars and played twice per phrase, so it feels
+  // familiar without looping the same 12 seconds forever. Notes are scheduled ~1 s ahead
+  // on the audio clock, so timing stays steady even when timers are throttled.
+  const MUSIC = {
+    bpm: 80,
+    chords: [
+      { bass: 36, notes: [60, 64, 67, 71] },   // Cmaj7
+      { bass: 33, notes: [57, 60, 64, 67] },   // Am7
+      { bass: 38, notes: [62, 65, 69, 72] },   // Dm7
+      { bass: 31, notes: [59, 62, 65, 67] },   // G7
+    ],
+    scale: [69, 72, 74, 76, 79, 81, 84],       // A C D E G A C
+  };
+  const music = { on: false, timer: 0, bar: 0, nextBarTime: 0, motif: null };
+  const midiHz = n => 440 * Math.pow(2, (n - 69) / 12);
+  const beatLen = () => 60 / MUSIC.bpm;
+
+  function musicNote(freq, t, dur, { type = 'sine', vol = 0.05, attack = 0.02 } = {}) {
+    const ctx = snd.ctx, o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(freq, t);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + attack);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g);
+    g.connect(snd.music);
+    o.start(t);
+    o.stop(t + dur + 0.05);
+  }
+  // Soft mallet: a sine with a quiet octave overtone that dies away quickly.
+  function pluck(n, t) {
+    musicNote(midiHz(n), t, 0.9, { vol: 0.045, attack: 0.008 });
+    musicNote(midiHz(n + 12), t, 0.25, { vol: 0.01, attack: 0.005 });
+  }
+
+  // 4 bars × 8 eighth notes; sparse (about a third of the slots), moving mostly by small steps.
+  function composeMotif() {
+    let idx = 3;
+    return Array.from({ length: 32 }, (_, slot) => {
+      const chance = slot % 8 === 0 ? 0.6 : slot % 2 === 0 ? 0.35 : 0.18;
+      if (Math.random() > chance) return null;
+      idx = Math.max(0, Math.min(MUSIC.scale.length - 1, idx + pick([-2, -1, -1, 0, 1, 1, 2])));
+      return MUSIC.scale[idx];
+    });
+  }
+
+  function playBar(bar, t) {
+    const beat = beatLen(), chord = MUSIC.chords[bar % 4], phrase = Math.floor(bar / 4);
+    chord.notes.forEach(n => musicNote(midiHz(n), t, beat * 4.2, { type: 'triangle', vol: 0.016, attack: 0.6 }));   // pad
+    musicNote(midiHz(chord.bass), t, beat * 1.6, { vol: 0.07, attack: 0.03 });                                       // bass: root…
+    musicNote(midiHz(chord.bass + 7), t + beat * 2, beat * 1.6, { vol: 0.055, attack: 0.03 });                       // …then the fifth
+    if (phrase === 0) return;                                  // first 4 bars: chords only, a gentle intro
+    if (bar % 8 === 4 || !music.motif) music.motif = composeMotif();   // new tune every 8 bars
+    const motif = music.motif;
+    for (let s = 0; s < 8; s++) {
+      const n = motif[(bar % 4) * 8 + s];
+      if (n) pluck(n, t + s * beat / 2);
+    }
+    if (phrase % 2 === 0) {                                    // a whisper of shaker on every other phrase
+      for (let b = 0; b < 4; b++) {
+        noise(0.05, { vol: 0.01, freq: 7000, filter: 'highpass', at: t + b * beat + beat / 2 - snd.ctx.currentTime, dest: snd.music });
+      }
+    }
+  }
+
+  function scheduleMusic() {
+    const ctx = snd.ctx;
+    try {
+      while (music.nextBarTime < ctx.currentTime + 1) {
+        playBar(music.bar, music.nextBarTime);
+        music.nextBarTime += beatLen() * 4;
+        music.bar++;
+      }
+    } catch (e) { snd.lastError = e; }
+  }
+
+  function startMusic() {
+    if (music.on || !snd.ctx) return;
+    music.on = true;
+    const ctx = snd.ctx;
+    music.bar = 0;
+    music.motif = null;
+    music.nextBarTime = ctx.currentTime + 0.1;
+    snd.music.gain.cancelScheduledValues(ctx.currentTime);
+    snd.music.gain.setTargetAtTime(0.7, ctx.currentTime, 2);   // slow fade-in
+    scheduleMusic();
+    music.timer = setInterval(scheduleMusic, 250);
+  }
+  function stopMusic() {
+    if (!music.on) return;
+    music.on = false;
+    clearInterval(music.timer);
+    snd.music.gain.setTargetAtTime(0, snd.ctx.currentTime, 0.4);   // already-scheduled notes fade out
+  }
+
+  function savePrefs() { try { localStorage.setItem(AUDIO_KEY, JSON.stringify(snd.prefs)); } catch (e) { /* not saved */ } }
+  function updateAudioButtons() {
+    $('sfxBtn').textContent = snd.prefs.sfx ? '🔊' : '🔇';
+    $('sfxBtn').classList.toggle('off', !snd.prefs.sfx);
+    $('ambBtn').classList.toggle('off', !snd.prefs.music);
+    $('ambBtn').title = snd.prefs.music ? 'Müzik: açık' : 'Müzik: kapalı';
+  }
+  $('sfxBtn').addEventListener('click', () => {
+    snd.prefs.sfx = !snd.prefs.sfx;
+    savePrefs();
+    updateAudioButtons();
+    sfx('ui');
+  });
+  $('ambBtn').addEventListener('click', () => {
+    snd.prefs.music = !snd.prefs.music;
+    savePrefs();
+    updateAudioButtons();
+    if (snd.prefs.music) startMusic(); else stopMusic();
+  });
+
+  function unlockAudio() {
+    if (audioCtx() && snd.prefs.music) startMusic();
+  }
+  document.addEventListener('pointerdown', unlockAudio, true);
+  document.addEventListener('keydown', unlockAudio, true);
+  document.addEventListener('visibilitychange', () => {
+    if (!snd.ctx) return;
+    if (document.hidden) snd.ctx.suspend(); else snd.ctx.resume();
+  });
+
+  // Every button gets a soft UI tick, except those that play their own sound.
+  const OWN_SFX = '#workBtn, .item, .pipe-cell, .slot, .tray-item, #eventBtn, .nail-hit, .audio-btn, #sectionBtn';
+  document.addEventListener('click', e => {
+    const b = e.target.closest && e.target.closest('button');
+    if (b && !b.matches(OWN_SFX)) sfx('ui');
+  }, true);
+
+  // ---------- Game loop ----------
+  let lastTick = Date.now();
+  let lastSaveTick = Date.now();
+  setInterval(() => {
+    if (document.hidden) return; // hidden time is paid out by grantOffline() on return
+    const now = Date.now();
+    const dt = Math.min((now - lastTick) / 1000, 1); // background tabs are covered by offline earnings
+    lastTick = now;
+
+    earn(perSec() * dt);
+    runAutomation(dt, now);
+    tickJobs(now);
+    state.playTime += dt;
+
+    const btn = $('eventBtn');
+    if (btn.classList.contains('show') && now > eventExpiresAt) {
+      btn.classList.remove('show');
+      nextEventAt = now + nextEventDelay();
+    } else if (!btn.classList.contains('show') && now > nextEventAt && !mg.open) {
+      spawnEvent();   // not while a mini game covers the screen
+    }
+
+    checkProgress();
+    render();
+
+    if (now - lastSaveTick > 5000) { save(); lastSaveTick = now; }
+  }, 100);
+
+  // A backgrounded tab throttles timers, so treat returning to it like an offline return.
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) save();
+    else { grantOffline(); lastTick = Date.now(); }
+  });
+  window.addEventListener('pagehide', save);
+
+  function grantOffline() {
+    const elapsed = Math.min((Date.now() - state.lastSave) / 1000, offlineCapSec());
+    const gain = (perSec(false) + autoPerSec(false)) * elapsed * offlineRate();
+    state.lastSave = Date.now();
+    if (elapsed < 30 || gain < 1) return;
+    earn(gain);
+    showModal({
+      icon: '👷',
+      title: 'Tekrar hoş geldin!',
+      text: `Sen yokken (${fmtTime(elapsed)}) ${toolLevel('otoCekic') ? 'ekibin ve otomatik çekiçlerin' : 'ekibin'} çalışmaya devam etti: +${fmt(gain)}`,
+      buttons: [{ label: 'Harika!' }],
+    });
+    checkProgress();
+  }
+
+  // ---------- Workshop: capacity ----------
+  const ROOM = 7;              // tiles per section side
+  const SECTION_COLS = 3;
+  const MAX_SECTIONS = 12;
+
+  const sectionCapacity = i => 8 + 4 * i;
+  function totalCapacity(n = state.sections) {
+    let c = 0;
+    for (let i = 0; i < n; i++) c += sectionCapacity(i);
+    return c;
+  }
+  const sectionCost = () => 500 * Math.pow(5, state.sections - 1);
+  const freeCapacity = () => totalCapacity() - teamTotal(state);
+  function sectionOf(index) {
+    let c = 0;
+    for (let i = 0; i < MAX_SECTIONS; i++) {
+      c += sectionCapacity(i);
+      if (index < c) return i;
+    }
+    return MAX_SECTIONS - 1;
+  }
+
+  function buySection() {
+    if (state.sections >= MAX_SECTIONS) return;
+    const cost = sectionCost();
+    if (state.money < cost) { toast(`🏗️ Yeni bölüm için ${fmt(cost)} gerekli`); return; }
+    state.money -= cost;
+    state.sections++;
+    sfx('build');
+    const o = sectionOrigin(state.sections - 1);
+    for (let k = 0; k < 8; k++) addEffect(o.x + rand(1, ROOM - 1), o.y + rand(1, ROOM - 1), '✨');
+    toast(`🏗️ Bölüm ${state.sections} açıldı! +${sectionCapacity(state.sections - 1)} kişilik yer`);
+    ws.view = { ...ws.view, mode: 'focus', index: state.sections - 1 };
+    checkProgress();
+    render();
+  }
+  $('sectionBtn').addEventListener('click', buySection);
+
+  function updateWorkshopBar() {
+    const used = teamTotal(state), cap = totalCapacity(), full = used >= cap;
+    $('capText').textContent = full
+      ? `⚠️ Atölye dolu! (${used}/${cap})`
+      : `👷 ${used} / ${cap} kişi · ${state.sections} bölüm`;
+    $('shopBar').classList.toggle('full', full);
+    const btn = $('sectionBtn');
+    if (state.sections >= MAX_SECTIONS) {
+      btn.disabled = true;
+      btn.textContent = 'Maksimum bölüm';
+    } else {
+      const cost = sectionCost();
+      btn.disabled = state.money < cost;
+      btn.textContent = `🏗️ Bölüm Ekle · ${fmt(cost)}`;
+    }
+  }
+
+  // ---------- Workshop: isometric scene ----------
+  const TW = 40, TH = 20;      // tile diamond size in world px
+  const WALL_H = 48;
+  const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+
+  const iso = (x, y) => ({ x: (x - y) * TW / 2, y: (x + y) * TH / 2 });
+  const up = (p, h) => ({ x: p.x, y: p.y - h });
+  const sectionOrigin = i => ({ x: (i % SECTION_COLS) * ROOM, y: Math.floor(i / SECTION_COLS) * ROOM });
+  const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+
+  // Furniture per section in local tile coords; `stand` is where a worker stands to use it.
+  // Odd sections use the layout mirrored across the diagonal for variety.
+  const LAYOUT = [
+    { type: 'bench', x: 1,   y: 0.2, w: 2.2, d: 0.8, h: 14, color: '#a0724a', stand: [2.1, 1.5] },
+    { type: 'shelf', x: 4.2, y: 0.1, w: 1.8, d: 0.6, h: 36, color: '#795548', stand: [5.1, 1.2] },
+    { type: 'saw',   x: 0.2, y: 2.4, w: 0.9, d: 1.8, h: 13, color: '#90a4ae', stand: [1.7, 3.3] },
+    { type: 'paint', x: 0.1, y: 4.8, w: 0.3, d: 1.8, h: 32, color: '#f5f5f5', stand: [1.2, 5.7] },
+    { type: 'desk',  x: 3,   y: 3,   w: 1.2, d: 0.8, h: 13, color: '#607d8b', stand: [3.6, 4.3] },
+    { type: 'tile',  x: 4.8, y: 5.6, w: 1.2, d: 1,   h: 8,  color: '#d7ccc8', stand: [4.2, 5.4] },
+  ];
+  const BENCH_DEPTH = 1 + 1.1 + 0.2 + 0.4;
+
+  // Purchased equipment, all placed in section 1 (the original shop).
+  const TOOL_SPOTS = {
+    matkap:   { x: 1.2,  y: 0.35, w: 0.5, d: 0.4, h: 4,  base: 14, color: '#546e7a', emoji: '🔩', stand: [2.1, 1.5], depth: BENCH_DEPTH + 0.01 },
+    vidalama: { x: 2.4,  y: 0.35, w: 0.5, d: 0.4, h: 4,  base: 14, color: '#f37021', emoji: '🪛', stand: [2.1, 1.5], depth: BENCH_DEPTH + 0.02 },
+    canta:    { x: 3.35, y: 0.3,  w: 0.6, d: 0.45, h: 9, color: '#c62828', emoji: '🧰', stand: [3.6, 1.3] },
+    lazer:    { x: 5.6,  y: 3.0,  w: 0.4, d: 0.4, h: 22, color: '#37474f', emoji: '📐', stand: [5.1, 3.6] },
+    kirici:   { x: 5.7,  y: 4.2,  w: 0.8, d: 0.6, h: 6,  color: '#8d6e63', emoji: '⛏️', stand: [5.2, 5.0] },
+    atolye:   { x: 2.2,  y: 6.0,  w: 2.4, d: 0.7, h: 16, color: '#6d4c41', emoji: '🗜️', stand: [3.4, 5.4] },
+    premium:  { x: 6.4,  y: 1.6,  w: 0.3, d: 1.2, h: 34, color: '#f37021', emoji: '⭐', stand: [5.8, 2.2] },
+    telsiz:   { x: 6.2,  y: 0.2,  w: 0.5, d: 0.5, h: 12, color: '#263238', emoji: '📻', stand: [6.0, 1.2] },
+    pano:     { x: 0.1,  y: 1.2,  w: 0.25, d: 0.9, h: 30, color: '#eceff1', emoji: '🗓️', stand: [0.9, 1.7] },
+  };
+  // Team machines sit on their tier's station in every section (the vest is worn, not placed).
+  const MACHINE_FURN = { gonye: 'saw', kaynak: 'bench', tabanca: 'paint', seramik: 'tile', tablet: 'desk', kamyonet: 'shelf' };
+  const MEDAL_COLORS = ['#8d6e63', '#cd7f32', '#b0bec5', '#ffc107'];   // by milestones reached
+
+  function sparkleTool(t) {
+    if (t.group === 'auto') return floatNearButton('✨🔨✨', '#f5b700');   // automation lives on the button
+    const s = TOOL_SPOTS[t.id];
+    if (s) return addEffect(s.x + s.w / 2, s.y + s.d / 2, '✨', s.base || 0);
+    if (t.id === 'yelek') {
+      return ws.roster.filter(w => w.tier === 'cirak').slice(0, 10).forEach(w => addEffect(w.x, w.y, '✨'));
+    }
+    for (let i = 0; i < state.sections; i++) {
+      sectionFurniture(i).filter(f => f.type === MACHINE_FURN[t.id])
+        .forEach(f => addEffect(f.x + f.w / 2, f.y + f.d / 2, '✨', f.h));
+    }
+  }
+
+  const TIER_LOOK = {
+    cirak:     { shirt: '#42a5f5', pants: '#37474f', hat: null },
+    kalfa:     { shirt: '#66bb6a', pants: '#455a64', hat: '#2e7d32' },
+    usta:      { shirt: '#f37021', pants: '#37474f', hat: '#fdd835' },
+    boya:      { shirt: '#fafafa', pants: '#e0e0e0', hat: '#fafafa' },
+    tadilat:   { shirt: '#ffb300', pants: '#5d4037', hat: '#ff7043' },
+    muteahhit: { shirt: '#546e7a', pants: '#263238', hat: '#ffffff' },
+    holding:   { shirt: '#263238', pants: '#212121', hat: null, tie: '#c62828' },
+  };
+  const JOBS = {
+    cirak:     ['shelf', 'sweep', 'shelf'],
+    kalfa:     ['saw', 'bench', 'shelf'],
+    usta:      ['bench', 'tool', 'tool', 'saw'],
+    boya:      ['paint', 'paint', 'sweep'],
+    tadilat:   ['tile', 'saw', 'tile'],
+    muteahhit: ['desk', 'inspect', 'inspect'],
+    holding:   ['desk', 'phone', 'shelf'],
+  };
+  const JOB_EMOJI = {
+    bench: '🔨', shelf: '📦', saw: '🪚', paint: '🖌️', tile: '🧱',
+    desk: '📋', sweep: '🧹', inspect: '🔍', phone: '📞',
+  };
+
+  const ws = {
+    canvas: $('shop'),
+    ctx: $('shop').getContext('2d'),
+    dpr: 1,
+    cam: { scale: 1, x: 0, y: 0, ready: false },
+    view: { mode: 'focus', index: 0 },   // index === state.sections means the "+ Yeni Bölüm" ghost
+    swipeStart: null,
+    swiped: false,
+    roster: [],
+    effects: [],
+    synced: false,
+    lastT: 0,
+  };
+
+  const furnCache = [];
+  function sectionFurniture(i) {
+    if (furnCache[i]) return furnCache[i];
+    const o = sectionOrigin(i), flip = i % 2 === 1;
+    furnCache[i] = LAYOUT.map(f => {
+      const g = flip ? { ...f, x: f.y, y: f.x, w: f.d, d: f.w, stand: [f.stand[1], f.stand[0]] } : f;
+      return { ...g, x: g.x + o.x, y: g.y + o.y, stand: [g.stand[0] + o.x, g.stand[1] + o.y] };
+    });
+    return furnCache[i];
+  }
+
+  function addEffect(x, y, emoji, base = 0) {
+    ws.effects.push({ x, y, emoji, base, t: 0 });
+  }
+
+  // Keep one walking worker per hired team member. The roster only grows within a
+  // branch, so each worker keeps its section; a shrink means a reset, so rebuild.
+  function syncRoster() {
+    if (ws.roster.length > teamTotal(state)) ws.roster = [];
+    const have = {};
+    ws.roster.forEach(w => { have[w.tier] = (have[w.tier] || 0) + 1; });
+    TEAM.forEach(t => {
+      for (let n = have[t.id] || 0; n < (state.team[t.id] || 0); n++) {
+        const section = sectionOf(ws.roster.length);
+        const o = sectionOrigin(section);
+        const w = {
+          tier: t.id, section,
+          x: o.x + rand(1.5, ROOM - 1), y: o.y + rand(1.5, ROOM - 1),
+          anim: rand(0, 10), speed: rand(1.1, 1.6),
+          mode: 'idle', timer: rand(0, 1.5),
+        };
+        ws.roster.push(w);
+        if (ws.synced) addEffect(w.x, w.y, '✨');
+      }
+    });
+    ws.synced = true;
+  }
+
+  function planJob(w) {
+    let job = w.nextJob || pick(JOBS[w.tier]);
+    w.nextJob = null;
+    const furniture = sectionFurniture(w.section);
+    const o = sectionOrigin(w.section);
+    let spot = null, emoji = JOB_EMOJI[job];
+
+    if (job === 'tool') {
+      const owned = TOOLS.filter(t => state.tools[t.id] && TOOL_SPOTS[t.id]);
+      if (owned.length && w.section === 0) {
+        const s = TOOL_SPOTS[pick(owned).id];
+        spot = s.stand;
+        emoji = s.emoji;
+      } else {
+        job = 'bench';
+        emoji = JOB_EMOJI.bench;
+      }
+    }
+    if (!spot && job === 'inspect') spot = pick(furniture).stand;
+    if (!spot) {
+      const matches = furniture.filter(f => f.type === job);
+      spot = matches.length
+        ? pick(matches).stand
+        : [o.x + rand(1.5, ROOM - 1), o.y + rand(1.5, ROOM - 1)];   // sweep / phone: anywhere
+    }
+    // With their tier's machine bought, workers show it while working at that station.
+    const m = machineFor(w.tier);
+    if (toolLevel(m.id) && MACHINE_FURN[m.id] === job) emoji = m.emoji;
+    w.job = job;
+    w.emoji = emoji;
+    w.tx = spot[0] + rand(-0.3, 0.3);
+    w.ty = spot[1] + rand(-0.3, 0.3);
+    w.mode = 'walk';
+  }
+
+  function updateWorker(w, dt) {
+    w.anim += dt;
+    if (w.mode === 'walk') {
+      const dx = w.tx - w.x, dy = w.ty - w.y, dist = Math.hypot(dx, dy);
+      const step = w.speed * dt;
+      if (dist <= step) {
+        w.x = w.tx; w.y = w.ty;
+        w.mode = 'work';
+        w.timer = rand(2.5, 6);
+      } else {
+        w.x += dx / dist * step;
+        w.y += dy / dist * step;
+      }
+    } else if (w.mode === 'work') {
+      w.timer -= dt;
+      if (w.timer <= 0) {
+        if (w.tier === 'cirak' && w.job === 'shelf') {
+          // Apprentices fetch material from the shelf and deliver it to the bench.
+          w.carry = '📦';
+          w.nextJob = 'bench';
+        } else if (w.carry) {
+          w.carry = null;
+          addEffect(w.x, w.y, '💰');
+        } else if (Math.random() < 0.35) {
+          addEffect(w.x, w.y, '💰');
+        }
+        w.mode = 'idle';
+        w.timer = rand(0.3, 1.2);
+      }
+    } else if ((w.timer -= dt) <= 0) {
+      planJob(w);
+    }
+  }
+
+  // ---------- Workshop: drawing ----------
+  function shade(hex, f) {
+    const n = parseInt(hex.slice(1), 16);
+    const m = v => Math.max(0, Math.min(255, Math.round(v * f)));
+    return `rgb(${m((n >> 16) & 255)},${m((n >> 8) & 255)},${m(n & 255)})`;
+  }
+  function poly(ctx, pts, fill, stroke) {
+    ctx.beginPath();
+    pts.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
+    ctx.closePath();
+    if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+    if (stroke) { ctx.strokeStyle = stroke; ctx.stroke(); }
+  }
+  function drawBox(ctx, x, y, w, d, h, color, base = 0) {
+    const a = iso(x, y), b = iso(x + w, y), c = iso(x + w, y + d), e = iso(x, y + d);
+    const lo = p => up(p, base), hi = p => up(p, base + h);
+    poly(ctx, [lo(e), lo(c), hi(c), hi(e)], shade(color, 0.8));    // front-left face
+    poly(ctx, [lo(b), lo(c), hi(c), hi(b)], shade(color, 0.65));   // front-right face
+    poly(ctx, [hi(a), hi(b), hi(c), hi(e)], color);                // top
+  }
+  function drawEmoji(ctx, emoji, x, y, size) {
+    ctx.font = `${size}px ${EMOJI_FONT}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(emoji, x, y);
+  }
+  const roomCorners = i => {
+    const o = sectionOrigin(i);
+    return [iso(o.x, o.y), iso(o.x + ROOM, o.y), iso(o.x + ROOM, o.y + ROOM), iso(o.x, o.y + ROOM)];
+  };
+
+  function drawFloor(ctx, i) {
+    const o = sectionOrigin(i);
+    const light = i % 2 ? '#efe6dc' : '#f6ede3', dark = i % 2 ? '#e4d8cb' : '#ebdfd2';
+    for (let x = 0; x < ROOM; x++) {
+      for (let y = 0; y < ROOM; y++) {
+        const X = o.x + x, Y = o.y + y;
+        poly(ctx, [iso(X, Y), iso(X + 1, Y), iso(X + 1, Y + 1), iso(X, Y + 1)], (x + y) % 2 ? dark : light);
+      }
+    }
+    ctx.lineWidth = 1.5;
+    poly(ctx, roomCorners(i), null, '#c9b8a6');
+  }
+
+  function drawWalls(ctx) {
+    for (let i = 0; i < state.sections; i++) {
+      const o = sectionOrigin(i);
+      if (o.y === 0) {   // back-right wall
+        const p1 = iso(o.x, 0), p2 = iso(o.x + ROOM, 0);
+        poly(ctx, [p1, p2, up(p2, WALL_H), up(p1, WALL_H)], '#ffe3cc');
+        poly(ctx, [p1, p2, up(p2, 6), up(p1, 6)], '#f37021');
+      }
+      if (o.x === 0) {   // back-left wall
+        const p1 = iso(0, o.y), p2 = iso(0, o.y + ROOM);
+        poly(ctx, [p1, p2, up(p2, WALL_H), up(p1, WALL_H)], '#f6d9c2');
+        poly(ctx, [p1, p2, up(p2, 6), up(p1, 6)], '#d65a10');
+        // window, skewed onto the wall plane
+        ctx.save();
+        const s = iso(0, o.y + 2.5);
+        ctx.transform(-1, 0.5, 0, 1, s.x, s.y);
+        ctx.fillStyle = '#b3e5fc';
+        ctx.fillRect(0, -38, 40, 20);
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(0, -38, 40, 20);
+        ctx.restore();
+      }
+    }
+    // Shop sign on section 1's back wall
+    ctx.save();
+    const s = iso(1.2, 0);
+    ctx.transform(1, 0.5, 0, 1, s.x, s.y - 26);
+    ctx.fillStyle = '#f37021';
+    ctx.fillRect(0, -12, 100, 17);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 10px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('USTA ATÖLYESİ', 8, -3.5);
+    ctx.restore();
+  }
+
+  function drawGhost(ctx) {
+    if (state.sections >= MAX_SECTIONS) return;
+    const affordable = state.money >= sectionCost();
+    ctx.save();
+    ctx.setLineDash([6, 5]);
+    ctx.lineWidth = 2;
+    poly(ctx, roomCorners(state.sections),
+      affordable ? 'rgba(31,157,85,.10)' : 'rgba(0,0,0,.03)',
+      affordable ? '#1f9d55' : '#c4b5a5');
+    ctx.restore();
+    const o = sectionOrigin(state.sections);
+    const c = iso(o.x + ROOM / 2, o.y + ROOM / 2);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = affordable ? '#1f9d55' : '#a39383';
+    ctx.font = 'bold 14px sans-serif';
+    ctx.fillText('+ Yeni Bölüm', c.x, c.y - 8);
+    ctx.font = '12px sans-serif';
+    ctx.fillText(fmt(sectionCost()), c.x, c.y + 9);
+  }
+
+  function drawSectionLabels(ctx) {
+    const counts = new Array(state.sections).fill(0);
+    ws.roster.forEach(w => { if (w.section < counts.length) counts[w.section]++; });
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (let i = 0; i < state.sections; i++) {
+      const o = sectionOrigin(i);
+      const p = iso(o.x + ROOM - 0.5, o.y + ROOM - 0.5);
+      const full = counts[i] >= sectionCapacity(i);
+      ctx.fillStyle = full ? '#c62828' : '#9c8a78';
+      ctx.fillText(`Bölüm ${i + 1} · ${counts[i]}/${sectionCapacity(i)}`, p.x, p.y);
+    }
+  }
+
+  function drawFurniture(ctx, f) {
+    drawBox(ctx, f.x, f.y, f.w, f.d, f.h, f.color);
+    if (f.type === 'shelf') {
+      const along = f.w > f.d;
+      for (let k = 0; k < 3; k++) {
+        const off = 0.1 + k * 0.55;
+        drawBox(ctx, f.x + (along ? off : 0.1), f.y + (along ? 0.1 : off), 0.4, 0.4, 7,
+          ['#ffb74d', '#4fc3f7', '#aed581'][k], f.h);
+      }
+    } else if (f.type === 'paint') {
+      // colored stripe on the visible long face
+      if (f.w < f.d) drawBox(ctx, f.x + f.w, f.y + 0.2, 0.01, f.d - 0.4, f.h * 0.5, '#4fc3f7', 8);
+      else drawBox(ctx, f.x + 0.2, f.y + f.d, f.w - 0.4, 0.01, f.h * 0.5, '#4fc3f7', 8);
+    } else if (f.type === 'saw') {
+      drawBox(ctx, f.x + f.w / 2 - 0.2, f.y + f.d / 2 - 0.2, 0.4, 0.4, 4, '#cfd8dc', f.h);
+    } else if (f.type === 'tile') {
+      drawBox(ctx, f.x + 0.15, f.y + 0.15, f.w - 0.3, f.d - 0.3, 5, '#bcaaa4', f.h);
+    } else if (f.type === 'desk') {
+      drawBox(ctx, f.x + 0.3, f.y + 0.2, 0.5, 0.35, 1, '#ffffff', f.h);
+    }
+    const machine = TOOLS.find(t => MACHINE_FURN[t.id] === f.type);
+    const L = machine ? toolLevel(machine.id) : 0;
+    if (L) {
+      const top = up(iso(f.x + f.w / 2, f.y + f.d / 2), f.h + 8);
+      drawEmoji(ctx, machine.emoji, top.x, top.y - 4, 12);
+      drawBadge(ctx, top.x, top.y, L);
+    }
+  }
+
+  // Level medal: brown → bronze → silver → gold as milestones are reached.
+  function drawBadge(ctx, x, y, L) {
+    const medals = MILESTONES.filter(m => L >= m).length;
+    ctx.fillStyle = MEDAL_COLORS[medals];
+    ctx.beginPath();
+    ctx.arc(x + 8, y - 1, 5.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = medals >= 2 ? '#212121' : '#ffffff';
+    ctx.font = 'bold 7px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(L, x + 8, y - 0.5);
+  }
+
+  function drawTool(ctx, s, L) {
+    drawBox(ctx, s.x, s.y, s.w, s.d, s.h, s.color, s.base || 0);
+    const top = up(iso(s.x + s.w / 2, s.y + s.d / 2), (s.base || 0) + s.h);
+    drawEmoji(ctx, s.emoji, top.x, top.y - 7, 13);
+    drawBadge(ctx, top.x, top.y - 4, L);
+  }
+
+  function drawWorker(ctx, w) {
+    const p = iso(w.x, w.y), L = TIER_LOOK[w.tier];
+    const bob = w.mode === 'work' ? Math.abs(Math.sin(w.anim * 8)) * 1.5 : 0;
+    const swing = w.mode === 'walk' ? Math.sin(w.anim * 12) * 2 : 0;
+
+    ctx.fillStyle = 'rgba(0,0,0,.18)';
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y, 6, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = L.pants;
+    ctx.fillRect(p.x - 3.5, p.y - 7, 3, 7 - Math.max(0, swing));
+    ctx.fillRect(p.x + 0.5, p.y - 7, 3, 7 - Math.max(0, -swing));
+
+    ctx.fillStyle = L.shirt;
+    ctx.strokeStyle = 'rgba(0,0,0,.25)';
+    ctx.lineWidth = 1;
+    ctx.fillRect(p.x - 5, p.y - 17 - bob, 10, 11);
+    ctx.strokeRect(p.x - 5, p.y - 17 - bob, 10, 11);
+    if (w.tier === 'cirak' && toolLevel('yelek')) {
+      // Safety vest: hi-vis stripes over the shirt
+      ctx.fillStyle = '#ffeb3b';
+      ctx.fillRect(p.x - 5, p.y - 14 - bob, 10, 2);
+      ctx.fillRect(p.x - 5, p.y - 10 - bob, 10, 2);
+    }
+    if (L.tie) {
+      ctx.fillStyle = L.tie;
+      ctx.fillRect(p.x - 1, p.y - 16 - bob, 2, 7);
+    }
+
+    ctx.fillStyle = '#f1c27d';
+    ctx.beginPath();
+    ctx.arc(p.x, p.y - 21.5 - bob, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+    if (L.hat) {
+      ctx.fillStyle = L.hat;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y - 22.5 - bob, 5, Math.PI, 0);
+      ctx.fill();
+      ctx.fillRect(p.x - 6, p.y - 23 - bob, 12, 1.8);
+    }
+
+    if (w.carry) drawEmoji(ctx, w.carry, p.x, p.y - 12 - bob, 10);
+    if (w.mode === 'work') {
+      ctx.fillStyle = 'rgba(255,255,255,.92)';
+      ctx.beginPath();
+      ctx.arc(p.x + 8, p.y - 33, 7.5, 0, Math.PI * 2);
+      ctx.fill();
+      drawEmoji(ctx, w.emoji, p.x + 8, p.y - 33, 10);
+    }
+  }
+
+  // Focus mode frames one section at the same size as a one-section shop, so workers
+  // stay readable however big the workshop grows. "all" frames everything, ghost included.
+  const lastViewIndex = () => state.sections < MAX_SECTIONS ? state.sections : state.sections - 1;
+
+  function fitCamera(dt) {
+    const c = ws.canvas;
+    if (ws.view.index > lastViewIndex()) ws.view.index = 0;   // sections were reset (branch or wipe)
+    const rooms = ws.view.mode === 'all'
+      ? Array.from({ length: lastViewIndex() + 1 }, (_, i) => i)
+      : [ws.view.index];
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const i of rooms) {
+      roomCorners(i).forEach(p => {
+        minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+        minY = Math.min(minY, p.y - WALL_H); maxY = Math.max(maxY, p.y);
+      });
+    }
+    const pad = 12;
+    const scale = Math.min((c.clientWidth - pad * 2) / (maxX - minX), (c.clientHeight - pad * 2) / (maxY - minY), 1.6);
+    const x = c.clientWidth / 2 - (minX + maxX) / 2 * scale;
+    const y = c.clientHeight / 2 - (minY + maxY) / 2 * scale;
+    const k = ws.cam.ready ? Math.min(1, dt * 4) : 1;   // ease into the new framing
+    ws.cam.scale += (scale - ws.cam.scale) * k;
+    ws.cam.x += (x - ws.cam.x) * k;
+    ws.cam.y += (y - ws.cam.y) * k;
+    ws.cam.ready = true;
+  }
+
+  function drawWorkshop(dt) {
+    const c = ws.canvas, ctx = ws.ctx;
+    const dpr = window.devicePixelRatio || 1;
+    const W = Math.round(c.clientWidth * dpr), H = Math.round(c.clientHeight * dpr);
+    if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
+    fitCamera(dt);
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    const s = ws.cam.scale * dpr;
+    ctx.setTransform(s, 0, 0, s, ws.cam.x * dpr, ws.cam.y * dpr);
+
+    for (let i = 0; i < state.sections; i++) drawFloor(ctx, i);
+    drawGhost(ctx);
+    drawWalls(ctx);
+    drawSectionLabels(ctx);
+
+    // Painter's algorithm: everything standing on the floor, sorted back to front.
+    const items = [];
+    for (let i = 0; i < state.sections; i++) {
+      sectionFurniture(i).forEach(f => items.push({ depth: f.x + f.w / 2 + f.y + f.d / 2, draw: () => drawFurniture(ctx, f) }));
+    }
+    TOOLS.forEach(t => {
+      const sp = TOOL_SPOTS[t.id];
+      if (!state.tools[t.id] || !sp) return;
+      items.push({ depth: sp.depth || sp.x + sp.w / 2 + sp.y + sp.d / 2, draw: () => drawTool(ctx, sp, toolLevel(t.id)) });
+    });
+    ws.roster.forEach(w => items.push({ depth: w.x + w.y, draw: () => drawWorker(ctx, w) }));
+    items.sort((a, b) => a.depth - b.depth).forEach(it => it.draw());
+
+    ws.effects.forEach(f => {
+      const p = up(iso(f.x, f.y), 26 + f.base + f.t * 22);
+      ctx.globalAlpha = Math.max(0, 1 - f.t / 1.2);
+      drawEmoji(ctx, f.emoji, p.x, p.y, 13);
+    });
+    ctx.globalAlpha = 1;
+  }
+
+  function workshopFrame(t) {
+    const dt = ws.lastT ? Math.min((t - ws.lastT) / 1000, 0.1) : 0;
+    ws.lastT = t;
+    syncRoster();
+    ws.roster.forEach(w => updateWorker(w, dt));
+    ws.effects = ws.effects.filter(f => (f.t += dt) < 1.2);
+    drawWorkshop(dt);
+    requestAnimationFrame(workshopFrame);
+  }
+
+  // ---------- Workshop: navigation ----------
+  function stepView(dir) {
+    const index = Math.max(0, Math.min(lastViewIndex(), ws.view.index + dir));
+    ws.view = { ...ws.view, mode: 'focus', index };
+    updateShopNav();
+  }
+
+  function updateShopNav() {
+    const all = ws.view.mode === 'all', i = ws.view.index;
+    $('navAll').classList.toggle('active', all);
+    $('navPrev').disabled = all || i <= 0;
+    $('navNext').disabled = all || i >= lastViewIndex();
+    if (all) {
+      $('navLabel').textContent = `Tüm atölye · ${state.sections} bölüm`;
+    } else if (i >= state.sections) {
+      $('navLabel').textContent = `+ Yeni Bölüm · ${fmt(sectionCost())}`;
+    } else {
+      const used = ws.roster.filter(w => w.section === i).length;
+      $('navLabel').textContent = `Bölüm ${i + 1} / ${state.sections} · ${used}/${sectionCapacity(i)} kişi`;
+    }
+  }
+
+  $('navPrev').addEventListener('click', () => stepView(-1));
+  $('navNext').addEventListener('click', () => stepView(1));
+  $('navAll').addEventListener('click', () => {
+    ws.view = { ...ws.view, mode: ws.view.mode === 'all' ? 'focus' : 'all' };
+    updateShopNav();
+  });
+
+  // Horizontal swipe on the canvas steps between sections; vertical drags still scroll the page.
+  ws.canvas.addEventListener('pointerdown', e => { ws.swipeStart = { x: e.clientX, y: e.clientY }; });
+  ws.canvas.addEventListener('pointerup', e => {
+    const s = ws.swipeStart;
+    ws.swipeStart = null;
+    if (!s) return;
+    const dx = e.clientX - s.x, dy = e.clientY - s.y;
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) {
+      ws.swiped = true;   // swallow the click that follows
+      stepView(dx < 0 ? 1 : -1);
+    }
+  });
+
+  // Tap: the ghost buys a section; in overview, any section zooms into it.
+  ws.canvas.addEventListener('click', e => {
+    if (ws.swiped) { ws.swiped = false; return; }
+    const r = ws.canvas.getBoundingClientRect();
+    const wx = (e.clientX - r.left - ws.cam.x) / ws.cam.scale;
+    const wy = (e.clientY - r.top - ws.cam.y) / ws.cam.scale;
+    const tx = (wx / (TW / 2) + wy / (TH / 2)) / 2;
+    const ty = (wy / (TH / 2) - wx / (TW / 2)) / 2;
+    const gx = Math.floor(tx / ROOM), gy = Math.floor(ty / ROOM);
+    if (gx < 0 || gx >= SECTION_COLS || gy < 0) return;
+    const idx = gy * SECTION_COLS + gx;
+    if (idx === state.sections && state.sections < MAX_SECTIONS) buySection();
+    else if (ws.view.mode === 'all' && idx < state.sections) {
+      ws.view = { mode: 'focus', index: idx };
+      updateShopNav();
+    }
+  });
+
+  // ---------- Boot ----------
+  load();
+  buildUI();
+  updateAchievements();
+  lastRankIndex = rankIndex();
+  grantOffline();
+  updateAudioButtons();
+  render();
+  requestAnimationFrame(workshopFrame);
+</script>
+</body>
+</html>
